@@ -24,7 +24,7 @@
                 </div>
                 <!-- Journal des messages -->
                 <div id="message-log">
-                    <h3>Journal</h3> <!-- Changed from Log to Journal -->
+                    <h3>Log</h3>
                     <!-- Messages ajoutés par JS -->
                 </div>
             </div>
@@ -44,7 +44,7 @@
                 <p><span title="Chance de Critique">🎯</span> Critique: <span id="stat-crit">0</span>%</p>
                 <p><span title="Chance d'Esquive">💨</span> Esquive: <span id="stat-dodge">0</span>%</p>
                 <p><span title="Or">💰</span> Or: <span id="stat-gold">0</span></p>
-                <hr style="border-color: var(--border-color); margin: 10px 0;"> <!-- Adjusted margin -->
+                <hr style="border-color: var(--border-color); margin: 15px 0;">
                 <p><span title="Arme">🗡️</span> Arme: <span id="stat-weapon">Aucune</span></p>
                 <p><span title="Armure">👕</span> Armure: <span id="stat-armor">Aucune</span></p>
                 <p><span title="Anneau 1">💍</span> Anneau 1: <span id="stat-ring1">Aucun</span></p>
@@ -55,14 +55,14 @@
 
         <!-- Zone des contrôles -->
         <div id="controls">
-            <button onclick="GameManager.toggleInventory()">🎒 Inventaire (I)</button> <!-- Added Icon & Key Hint -->
-            <button onclick="GameManager.toggleSkills()">✨ Compétences (K)</button> <!-- Added Icon & Key Hint -->
-            <button id="shop-btn" onclick="GameManager.enterShop()">🏪 Boutique</button> <!-- Added Icon -->
-            <button id="return-hub-btn" onclick="GameManager.returnToHub()">🛖 Retour Village</button> <!-- Added Icon -->
-            <button onclick="GameManager.saveGame()">💾 Sauvegarder</button> <!-- Added Icon -->
-            <button onclick="GameManager.loadGame()">🔄 Charger</button> <!-- Added Icon -->
-            <!-- Bouton de Test Removed - Add it back in JS if needed for debugging -->
-            <!-- <button onclick="GameManager.addTestGold(2000)" style="background-color: #e57373; color: black; border-color: red;">+2000 Or (Test)</button> -->
+            <button onclick="GameManager.toggleInventory()">Inventaire</button>
+            <button onclick="GameManager.toggleSkills()">Compétences</button>
+            <button id="shop-btn" onclick="GameManager.enterShop()">Boutique</button>
+            <button id="return-hub-btn" onclick="GameManager.returnToHub()">Retour Village</button>
+            <button onclick="GameManager.saveGame()">Sauvegarder</button>
+            <button onclick="GameManager.loadGame()">Charger</button>
+            <!-- Bouton de Test -->
+            <button onclick="GameManager.addTestGold(2000)" style="background-color: #e57373; color: black; border-color: red;">+2000 Or (Test)</button>
         </div>
 
         <!-- Information sur le lieu actuel -->
@@ -70,16 +70,14 @@
 
         <!-- Écran Game Over (caché par défaut) -->
         <div id="game-over-screen" class="hidden">
-            <h2>💀 GAME OVER 💀</h2> <!-- Added Icons -->
+            <h2>GAME OVER</h2>
             <p>Vous avez été vaincu.</p>
-            <!-- Ensure hideGameOver is called correctly to remove the screen -->
-            <button onclick="GameManager.hideGameOver(); GameManager.loadGame()">🔄 Charger la Dernière Sauvegarde</button> <!-- Combined hide and load -->
-             <button onclick="window.location.reload()">🔁 Recommencer (Nouvelle partie)</button> <!-- Added restart button -->
+            <button onclick="GameManager.loadGame(); GameManager.hideGameOver()">Charger la Dernière Sauvegarde</button>
         </div>
 
         <!-- Modale Boutique (cachée par défaut) -->
-        <div id="modal-backdrop" class="hidden"></div> <!-- Use class hidden -->
-        <div id="shop-modal" class="modal hidden"> <!-- Added modal class, use class hidden -->
+        <div id="modal-backdrop" style="display: none;"></div> <!-- Commence caché -->
+        <div id="shop-modal" class="hidden"> <!-- Commence caché via CSS -->
              <h2><span id="shop-title-icon">🏪</span> Boutique</h2>
             <div id="shop-content">
                 <!-- Contenu généré dynamiquement par renderShop() -->
