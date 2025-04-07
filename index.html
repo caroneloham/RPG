@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mini Dungeon Crawler Complet</title>
-    <!-- Lien vers le fichier CSS externe -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,7 +14,6 @@
         <div id="game-screen">
             <div id="main-view-area">
                 <div id="main-view">
-                    <!-- Les différentes vues seront affichées ici par le JS -->
                     <div id="map-display"></div>
                     <div id="combat-display" class="hidden"></div>
                     <div id="inventory-display" class="hidden"></div>
@@ -35,49 +33,41 @@
                 <div class="stat-bar-container"><div id="xp-bar" class="stat-bar xp-bar"></div></div>
                 <p><span title="Attaque">⚔️</span> Attaque: <span id="stat-attack">5</span></p>
                 <p><span title="Défense">🛡️</span> Défense: <span id="stat-defense">2</span></p>
-                <!-- Nouvelles stats ajoutées -->
                 <p><span title="Chance de Critique">🎯</span> Critique: <span id="stat-crit">0</span>%</p>
                 <p><span title="Chance d'Esquive">💨</span> Esquive: <span id="stat-dodge">0</span>%</p>
-                <!-- Fin nouvelles stats -->
                 <p><span title="Or">💰</span> Or: <span id="stat-gold">0</span></p>
                 <hr style="border-color: var(--border-color); margin: 15px 0;">
-                <!-- Équipement -->
                 <p><span title="Arme">🗡️</span> Arme: <span id="stat-weapon">Aucune</span></p>
                 <p><span title="Armure">👕</span> Armure: <span id="stat-armor">Aucune</span></p>
-                <!-- Accessoires équipés -->
                 <p><span title="Anneau 1">💍</span> Anneau 1: <span id="stat-ring1">Aucun</span></p>
                 <p><span title="Anneau 2">💍</span> Anneau 2: <span id="stat-ring2">Aucun</span></p>
                 <p><span title="Amulette">📿</span> Amulette: <span id="stat-amulet">Aucun</span></p>
-                <!-- Fin équipement -->
             </div>
         </div>
 
         <div id="controls">
-            <!-- Les appels de fonction JavaScript restent ici -->
             <button onclick="GameManager.toggleInventory()">Inventaire</button>
             <button onclick="GameManager.toggleSkills()">Compétences</button>
             <button id="shop-btn" onclick="GameManager.enterShop()">Boutique</button>
             <button id="return-hub-btn" onclick="GameManager.returnToHub()">Retour Village</button>
             <button onclick="GameManager.saveGame()">Sauvegarder</button>
             <button onclick="GameManager.loadGame()">Charger</button>
+            <!-- BOUTON DE TEST AJOUTÉ ICI -->
+            <button onclick="GameManager.addTestGold(2000)" style="background-color: #e57373; color: black; border-color: red;">+2000 Or (Test)</button>
+            <!-- FIN BOUTON DE TEST -->
         </div>
         <span id="location-info">Lieu: Village</span>
 
-        <!-- Écran Game Over -->
         <div id="game-over-screen" class="hidden">
             <h2>GAME OVER</h2>
             <p>Vous avez été vaincu.</p>
-            <!-- Le JS gère le rechargement et le masquage de l'écran -->
             <button onclick="GameManager.loadGame(); GameManager.hideGameOver()">Charger la Dernière Sauvegarde</button>
         </div>
 
-        <!-- Modale Boutique -->
         <div id="modal-backdrop"></div>
-        <div id="shop-modal" class="hidden"> <!-- Start hidden -->
+        <div id="shop-modal" class="hidden">
              <h2><span id="shop-title-icon">🏪</span> Boutique</h2>
-            <div id="shop-content">
-                <!-- Contenu généré par JS -->
-            </div>
+            <div id="shop-content"></div>
              <div id="shop-player-gold"> Votre Or : 💰 <span id="shop-gold-display">0</span> </div>
             <div id="shop-modal-controls">
                 <button id="close-shop-btn" class="modal-button" onclick="GameManager.exitShop()">Fermer</button>
@@ -85,8 +75,32 @@
         </div>
     </div>
 
-    <!-- Lien vers le fichier JavaScript externe (placé à la fin du body) -->
     <script src="script.js"></script>
+<scritp>
+    // --- GameManager Object ---
+const GameManager = {
+    // ... (toutes les fonctions existantes: initialize, handleInput, movePlayer, etc.) ...
 
+    // --- NOUVELLE FONCTION DE TEST ---
+    addTestGold: function(amount) {
+        if (!player) return; // Sécurité si le joueur n'est pas encore initialisé
+        player.gold += amount;
+        logMessage(`CHEAT: +${amount} ${TILE.GOLD}.`);
+        renderStats(); // Met à jour l'affichage de l'or immédiatement
+        // Optionnel: sauvegarder directement pour que l'or reste après un F5 + Chargement
+        // this.saveGame();
+    },
+    // --- FIN NOUVELLE FONCTION DE TEST ---
+
+    updateButtonStates: function() {
+        // ... (code existant) ...
+    }
+}; // Fin de l'objet GameManager
+
+// ... (reste du code JS : CombatManager, ShopManager, etc.) ...
+
+// --- Initialize Game ---
+GameManager.initialize();
+</scritp>
 </body>
 </html>
