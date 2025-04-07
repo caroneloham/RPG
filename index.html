@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mini Dungeon Crawler Complet</title>
+    <!-- Lien vers le fichier CSS externe -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,27 +13,34 @@
         <h1>Mini Dungeon Crawler</h1>
 
         <div id="game-screen">
+            <!-- Zone principale du jeu (Carte, Combat, Inventaire, etc.) -->
             <div id="main-view-area">
                 <div id="main-view">
+                    <!-- Contenu dynamique chargé par JS -->
                     <div id="map-display"></div>
                     <div id="combat-display" class="hidden"></div>
                     <div id="inventory-display" class="hidden"></div>
                     <div id="skills-display" class="hidden"></div>
                 </div>
-                <div id="message-log"><h3>Log</h3></div>
+                <!-- Journal des messages -->
+                <div id="message-log">
+                    <h3>Log</h3>
+                    <!-- Messages ajoutés par JS -->
+                </div>
             </div>
 
+            <!-- Panneau des statistiques du joueur -->
             <div id="player-stats">
                 <h3>Joueur</h3>
                 <p><span title="Niveau">⭐</span> Niveau: <span id="stat-level">1</span></p>
-                <p><span title="Points de Vie">❤️</span> PV: <span id="stat-hp">10</span>/<span id="stat-max-hp">10</span></p>
+                <p><span title="Points de Vie">❤️</span> PV: <span id="stat-hp">0</span>/<span id="stat-max-hp">0</span></p>
                 <div class="stat-bar-container"><div id="hp-bar" class="stat-bar hp-bar"></div></div>
-                <p><span title="Points de Mana">💧</span> PM: <span id="stat-mp">5</span>/<span id="stat-max-mp">5</span></p>
+                <p><span title="Points de Mana">💧</span> PM: <span id="stat-mp">0</span>/<span id="stat-max-mp">0</span></p>
                 <div class="stat-bar-container"><div id="mp-bar" class="stat-bar mp-bar"></div></div>
-                <p><span title="Expérience">📈</span> XP: <span id="stat-xp">0</span>/<span id="stat-xp-next">100</span></p>
+                <p><span title="Expérience">📈</span> XP: <span id="stat-xp">0</span>/<span id="stat-xp-next">0</span></p>
                 <div class="stat-bar-container"><div id="xp-bar" class="stat-bar xp-bar"></div></div>
-                <p><span title="Attaque">⚔️</span> Attaque: <span id="stat-attack">5</span></p>
-                <p><span title="Défense">🛡️</span> Défense: <span id="stat-defense">2</span></p>
+                <p><span title="Attaque">⚔️</span> Attaque: <span id="stat-attack">0</span></p>
+                <p><span title="Défense">🛡️</span> Défense: <span id="stat-defense">0</span></p>
                 <p><span title="Chance de Critique">🎯</span> Critique: <span id="stat-crit">0</span>%</p>
                 <p><span title="Chance d'Esquive">💨</span> Esquive: <span id="stat-dodge">0</span>%</p>
                 <p><span title="Or">💰</span> Or: <span id="stat-gold">0</span></p>
@@ -45,6 +53,7 @@
             </div>
         </div>
 
+        <!-- Zone des contrôles -->
         <div id="controls">
             <button onclick="GameManager.toggleInventory()">Inventaire</button>
             <button onclick="GameManager.toggleSkills()">Compétences</button>
@@ -52,22 +61,28 @@
             <button id="return-hub-btn" onclick="GameManager.returnToHub()">Retour Village</button>
             <button onclick="GameManager.saveGame()">Sauvegarder</button>
             <button onclick="GameManager.loadGame()">Charger</button>
-            <!-- BOUTON DE TEST AJOUTÉ ICI -->
+            <!-- Bouton de Test -->
             <button onclick="GameManager.addTestGold(2000)" style="background-color: #e57373; color: black; border-color: red;">+2000 Or (Test)</button>
-            <!-- FIN BOUTON DE TEST -->
         </div>
-        <span id="location-info">Lieu: Village</span>
 
+        <!-- Information sur le lieu actuel -->
+        <span id="location-info">Lieu: Chargement...</span>
+
+        <!-- Écran Game Over (caché par défaut) -->
         <div id="game-over-screen" class="hidden">
             <h2>GAME OVER</h2>
             <p>Vous avez été vaincu.</p>
             <button onclick="GameManager.loadGame(); GameManager.hideGameOver()">Charger la Dernière Sauvegarde</button>
         </div>
 
-        <div id="modal-backdrop"></div>
-        <div id="shop-modal" class="hidden">
+        <!-- Modale Boutique (cachée par défaut) -->
+        <div id="modal-backdrop" style="display: none;"></div> <!-- Commence caché -->
+        <div id="shop-modal" class="hidden"> <!-- Commence caché via CSS -->
              <h2><span id="shop-title-icon">🏪</span> Boutique</h2>
-            <div id="shop-content"></div>
+            <div id="shop-content">
+                <!-- Contenu généré dynamiquement par renderShop() -->
+                <p>Chargement...</p>
+            </div>
              <div id="shop-player-gold"> Votre Or : 💰 <span id="shop-gold-display">0</span> </div>
             <div id="shop-modal-controls">
                 <button id="close-shop-btn" class="modal-button" onclick="GameManager.exitShop()">Fermer</button>
@@ -75,32 +90,8 @@
         </div>
     </div>
 
+    <!-- Lien vers le fichier JavaScript externe (toujours à la fin) -->
     <script src="script.js"></script>
-<scritp>
-    // --- GameManager Object ---
-const GameManager = {
-    // ... (toutes les fonctions existantes: initialize, handleInput, movePlayer, etc.) ...
 
-    // --- NOUVELLE FONCTION DE TEST ---
-    addTestGold: function(amount) {
-        if (!player) return; // Sécurité si le joueur n'est pas encore initialisé
-        player.gold += amount;
-        logMessage(`CHEAT: +${amount} ${TILE.GOLD}.`);
-        renderStats(); // Met à jour l'affichage de l'or immédiatement
-        // Optionnel: sauvegarder directement pour que l'or reste après un F5 + Chargement
-        // this.saveGame();
-    },
-    // --- FIN NOUVELLE FONCTION DE TEST ---
-
-    updateButtonStates: function() {
-        // ... (code existant) ...
-    }
-}; // Fin de l'objet GameManager
-
-// ... (reste du code JS : CombatManager, ShopManager, etc.) ...
-
-// --- Initialize Game ---
-GameManager.initialize();
-</scritp>
 </body>
 </html>
