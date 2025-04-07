@@ -1,0 +1,79 @@
+/* --- Palette & Variables --- */
+:root {
+    --bg-dark: #1a1a1a; --bg-medium: #2c2c2c; --bg-light: #3f3f3f;
+    --text-light: #e0e0e0; --text-medium: #aaaaaa; --text-dark: #111111;
+    --border-color: #555555; --accent-color: #ffb74d; --gold-color: #ffd700;
+    --player-color: #4caf50; --enemy-color-base: #f44336; --enemy-color-alt1: #ff9800;
+    --enemy-color-alt2: #e91e63; --wall-color: #795548; --floor-color: #424242;
+    --exit-color: #2196F3; --potion-color: #00bcd4; --hp-color: #4caf50;
+    --mp-color: #2196F3; --xp-color: #ffc107; --modal-backdrop: rgba(0, 0, 0, 0.7);
+}
+/* --- Styles Généraux --- */
+body { font-family: Georgia, serif; background-color: var(--bg-dark); color: var(--text-light); display: flex; justify-content: center; align-items: flex-start; padding-top: 20px; line-height: 1.5; font-size: 16px; }
+#game-container { display: flex; flex-direction: column; border: 2px solid var(--border-color); padding: 15px; background-color: var(--bg-medium); min-width: 700px; max-width: 900px; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
+h1, h2, h3 { color: var(--accent-color); margin-top: 0; text-align: center; }
+h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 5px; margin-bottom: 10px; color: var(--text-medium); }
+/* --- Layout Principal (Flexbox) --- */
+#game-screen { display: flex; width: 100%; margin-bottom: 15px; min-height: 400px; }
+#main-view-area { flex-grow: 1; display: flex; flex-direction: column; margin-right: 15px; }
+#main-view { flex-grow: 1; border: 1px solid var(--border-color); padding: 15px; background-color: var(--bg-dark); display: flex; justify-content: center; align-items: center; min-height: 300px; overflow: auto; margin-bottom: 10px; }
+/* Styles pour les différentes vues */
+#map-display, #combat-display, #inventory-display, #skills-display { font-family: 'Courier New', Courier, monospace; font-size: 18px; white-space: pre; line-height: 1.2; width: 100%; height: 100%; color: var(--text-light); }
+#combat-display, #inventory-display, #skills-display { white-space: normal; font-family: Georgia, serif; }
+.hidden { display: none !important; }
+/* --- Panneau Stats Joueur (Sidebar) --- */
+#player-stats { flex-shrink: 0; width: 240px; border: 1px solid var(--border-color); padding: 15px; background-color: var(--bg-dark); }
+#player-stats p { margin: 8px 0; font-size: 14px; display: flex; align-items: center; }
+#player-stats p > span:first-child { margin-right: 8px; font-size: 1.2em; display: inline-block; width: 20px; text-align: center; }
+.stat-bar-container { background-color: var(--floor-color); border: 1px solid var(--border-color); height: 12px; border-radius: 3px; margin-top: 4px; overflow: hidden; }
+.stat-bar { height: 100%; border-radius: 2px; transition: width 0.3s ease-in-out; text-align: center; font-size: 9px; line-height: 12px; color: rgba(0,0,0,0.7); font-weight: bold; }
+.hp-bar { background-color: var(--hp-color); } .mp-bar { background-color: var(--mp-color); } .xp-bar { background-color: var(--xp-color); }
+.flash-damage { animation: flashRed 0.4s ease-out; } @keyframes flashRed { 0%, 100% { box-shadow: none; } 50% { box-shadow: 0 0 10px 3px red; } }
+/* --- Journal des Messages --- */
+#message-log { height: 120px; border: 1px solid var(--border-color); padding: 10px; overflow-y: scroll; background-color: var(--bg-dark); font-size: 13px; color: var(--text-medium); }
+#message-log h3 { margin-bottom: 5px; } #message-log p { margin: 0 0 5px 0; padding: 0; }
+/* --- Styles des Tuiles de Jeu --- */
+.tile { display: inline-block; width: 1.2em; text-align: center; transition: transform 0.1s ease-out; }
+.tile-floor { color: var(--floor-color); } .tile-wall { color: var(--wall-color); font-weight: bold; }
+.tile-player { color: var(--player-color); font-weight: bold; transform: scale(1.1); }
+.tile-enemy-g { color: var(--enemy-color-base); font-weight: bold; } .tile-enemy-s { color: var(--enemy-color-alt1); font-weight: bold; }
+.tile-enemy-o { color: var(--enemy-color-alt2); font-weight: bold; } .tile-enemy-b { color: #f0f; font-weight: bold; transform: scale(1.2);}
+.tile-gold { color: var(--gold-color); } .tile-potion { color: var(--potion-color); } .tile-exit { color: var(--exit-color); font-weight: bold; }
+.tile-hub-inn { color: var(--mp-color); font-weight: bold; } .tile-hub-dungeon { color: var(--accent-color); font-weight: bold; }
+/* --- Contrôles & Boutons --- */
+#controls { text-align: center; margin-top: 10px; }
+#controls button, .action-button, .shop-button, .skill-button, .inventory-button, .modal-button { background-color: var(--bg-light); color: var(--text-light); border: 1px solid var(--border-color); padding: 8px 15px; margin: 5px; cursor: pointer; font-family: inherit; font-size: 14px; border-radius: 4px; transition: background-color 0.2s ease, transform 0.1s ease, opacity 0.2s ease; }
+#controls button:hover, .action-button:hover, .shop-button:hover, .skill-button:hover, .inventory-button:hover, .modal-button:hover { background-color: var(--accent-color); color: var(--text-dark); }
+#controls button:active, .action-button:active, .shop-button:active, .skill-button:active, .inventory-button:active, .modal-button:active { transform: translateY(1px); }
+#controls button:disabled, .shop-button:disabled, .modal-button:disabled { opacity: 0.5; cursor: not-allowed; background-color: var(--bg-light); color: var(--text-medium); }
+#controls button:disabled:hover { background-color: var(--bg-light); color: var(--text-medium); }
+#location-info { display: block; margin-top: 10px; font-size: 13px; color: var(--text-medium); text-align: center; }
+/* --- Écran de Combat --- */
+#combat-display { display: flex; flex-direction: column; align-items: center; padding: 20px; }
+.combat-participants { display: flex; justify-content: space-around; width: 100%; margin-bottom: 20px; }
+.combatant-info { border: 1px dashed var(--border-color); padding: 15px; min-width: 180px; text-align: center; background-color: rgba(0,0,0,0.2); border-radius: 5px; }
+.combat-actions button { margin: 8px; }
+#combat-skill-selection, #combat-item-selection { margin-top: 15px; padding: 10px; border: 1px dotted var(--border-color); background-color: rgba(0,0,0,0.1); border-radius: 4px; }
+#combat-skill-selection h4, #combat-item-selection h4 { margin-top: 0; }
+/* --- Listes (Inventaire, Compétences) --- */
+.list-item { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dotted var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+.list-item:last-child { border-bottom: none; } .list-item span { margin-right: 10px; } .list-item strong { color: var(--accent-color); }
+.list-item em { color: var(--text-medium); font-style: normal; } .list-item button { margin-left: auto; }
+/* --- Boutique Modale --- */
+#modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--modal-backdrop); z-index: 998; display: none; }
+#shop-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 650px; max-height: 85vh; background-color: var(--bg-medium); border: 2px solid var(--border-color); border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.6); z-index: 999; display: none; flex-direction: column; }
+#shop-content { padding: 20px; overflow-y: auto; flex-grow: 1; }
+#shop-modal h2 { margin: 0; padding: 15px 20px; background-color: var(--bg-dark); border-bottom: 1px solid var(--border-color); border-radius: 8px 8px 0 0; font-size: 1.5em; }
+.shop-category h3 { margin-top: 20px; margin-bottom: 10px; color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+.shop-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 5px; border-bottom: 1px dotted var(--border-color); transition: background-color 0.2s ease; }
+.shop-item:last-child { border-bottom: none; } .shop-item:hover { background-color: var(--bg-light); }
+.shop-item-info { flex-grow: 1; margin: 0 10px; } .shop-item-name { font-weight: bold; color: var(--text-light); }
+.shop-item-effect { font-size: 0.9em; color: var(--text-medium); margin-left: 5px; }
+.shop-item-cost { color: var(--gold-color); font-weight: bold; margin: 0 10px; } .shop-item-icon { font-size: 1.3em; width: 30px; text-align: center; }
+#shop-player-gold { text-align: right; padding: 0 20px 10px; color: var(--gold-color); font-weight: bold; }
+#shop-modal-controls { padding: 10px 20px; text-align: right; background-color: var(--bg-dark); border-top: 1px solid var(--border-color); border-radius: 0 0 8px 8px; }
+/* Game Over Overlay */
+#game-over-screen { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(100, 0, 0, 0.85); color: #ffdddd; padding: 30px 40px; border: 3px solid #f00; border-radius: 10px; text-align: center; z-index: 1000; box-shadow: 0 0 20px rgba(255, 0, 0, 0.7); }
+#game-over-screen h2 { margin-top: 0; color: #f00; font-size: 2em; }
+#game-over-screen button { background-color: #ccc; color: #333; padding: 10px 20px; font-size: 1em; }
+#game-over-screen button:hover { background-color: #eee; color: #000; }
