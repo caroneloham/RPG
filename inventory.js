@@ -4,13 +4,10 @@
  * Permet d'ajouter, supprimer, utiliser et afficher les objets possédés.
  */
 
-// Accès à l'objet joueur (supposé global ou importé)
-// let player = ...
-
-// Accès aux fonctions d'autres modules (supposés disponibles)
-// CombatManager.logMessage(...)
-// CombatManager.updatePlayerStatsDisplay()
-// CombatManager.setPlayerHp() // Fonction pour modifier directement les HP du joueur
+// Dépendances :
+// - Objet 'player' global (défini dans main.js)
+// - CombatManager (pour logMessage, updatePlayerStatsDisplay, setPlayerHp)
+// - Éléments DOM définis dans index.html
 
 const InventoryManager = (() => {
 
@@ -20,18 +17,32 @@ const InventoryManager = (() => {
     const closeInventoryButton = document.getElementById('close-inventory-button');
     const openInventoryButton = document.getElementById('open-inventory-button'); // Bouton principal pour ouvrir
 
+    // Vérification initiale des éléments DOM critiques
+    if (!inventoryDisplay || !inventoryItemList || !closeInventoryButton || !openInventoryButton) {
+        console.error("Erreur critique: Un ou plusieurs éléments DOM de l'inventaire sont manquants ! Le module risque de ne pas fonctionner.");
+        // On pourrait retourner un objet vide ou lancer une exception pour arrêter l'initialisation.
+        // return {}; // Arrêter l'initialisation du module si les éléments de base manquent
+    }
+
     let isInventoryOpen = false;
 
     // --- Structure de données de l'inventaire ---
-    // Tableau d'objets. Chaque objet a au moins: id, name, quantity, effect
+    // Utilise une Map pour une recherche potentiellement plus rapide par ID,
+    // bien qu'un Array soit suffisant pour de petits inventaires. Restons sur Array pour la simplicité.
     let playerInventory = [];
-    /* Exemple d'entrée :
-    {
-        id: 'potion_heal_1',
-        name: "Potion de Soins Mineure",
-        quantity: 3,
-        effect: { action: 'heal', amount: 25 }
-    }
+    /* Structure d'un objet dans l'inventaire :
+       {
+           id: 'string',       // Identifiant unique de l'objet
+           name: 'string',     // Nom affiché
+           quantity: number,   // Nombre d'objets possédés
+           effect: {           // Description de l'effet
+               action: 'string', // Type d'action (heal, buff, passive, etc.)
+               amount?: number,  // Quantité (pour heal, etc.)
+               stat?: string,    // Statistique affectée (pour buff)
+               duration?: number,// Durée (pour buff)
+               description?: string // Texte descriptif de l'effet (affiché)
+           }
+       }
     */
 
     /**
@@ -39,32 +50,35 @@ const InventoryManager = (() => {
      * @param {object} itemToAdd - L'objet à ajouter. Doit avoir {id, name, effect}. Quantity est optionnelle (défaut 1).
      */
     function addItem(itemToAdd) {
-        if (!itemToAdd || !itemToAdd.id || !itemToAdd.name) {
-            console.error("Tentative d'ajout d'un objet invalide:", itemToAdd);
-            return;
+        // Vérification de l'objet à ajouter
+        if (!itemToAdd || typeof itemToAdd.id !== 'string' || typeof itemToAdd.name !== 'string' || typeof itemToAdd.effect !== 'object') {
+            console.error("Tentative d'ajout d'un objet invalide à l'inventaire:", itemToAdd);
+            return; // Ne pas ajouter l'objet invalide
         }
+         // Vérifier si CombatManager est prêt pour logger (optionnel, mais bon usage)
+         const canLog = typeof CombatManager !== 'undefined' && CombatManager.logMessage;
 
-        const quantityToAdd = itemToAdd.quantity || 1; // Quantité par défaut est 1
+        const quantityToAdd = typeof itemToAdd.quantity === 'number' && itemToAdd.quantity > 0 ? itemToAdd.quantity : 1;
 
-        // Chercher si un objet avec le même ID existe déjà
-        const existingItem = playerInventory.find(item => item.id === itemToAdd.id);
+        const existingItemIndex = playerInventory.findIndex(item => item.id === itemToAdd.id);
 
-        if (existingItem) {
-            // Si l'objet existe, augmenter la quantité
-            existingItem.quantity += quantityToAdd;
+        if (existingItemIndex > -1) {
+            // Augmenter la quantité
+            playerInventory[existingItemIndex].quantity += quantityToAdd;
+             if (canLog) CombatManager.logMessage(`${quantityToAdd}x ${itemToAdd.name} ajouté(s) (Total: ${playerInventory[existingItemIndex].quantity}).`);
         } else {
-            // Sinon, ajouter le nouvel objet au tableau
-            // Assure que l'objet ajouté a une propriété quantity
-            playerInventory.push({
-                ...itemToAdd, // Copie les propriétés de itemToAdd (id, name, effect)
-                quantity: quantityToAdd // Définit la quantité
-            });
+            // Ajouter comme nouvel objet
+            const newItem = {
+                id: itemToAdd.id,
+                name: itemToAdd.name,
+                quantity: quantityToAdd,
+                effect: { ...itemToAdd.effect } // Copie de l'objet effet
+            };
+            playerInventory.push(newItem);
+             if (canLog) CombatManager.logMessage(`${quantityToAdd}x ${itemToAdd.name} ajouté(s) à l'inventaire.`);
         }
 
-        // Optionnel : Journaliser l'ajout (peut être fait par le module appelant, ex: ShopManager)
-        // CombatManager.logMessage(`${itemToAdd.name} ajouté à l'inventaire.`);
-
-        // Si l'inventaire est ouvert, le rafraîchir
+        // Rafraîchir l'affichage si l'inventaire est ouvert
         if (isInventoryOpen) {
             displayInventory();
         }
@@ -72,107 +86,173 @@ const InventoryManager = (() => {
 
     /**
      * Supprime une certaine quantité d'un objet de l'inventaire.
+     * Principalement utilisé en interne par useItem ou pour des quêtes/événements.
      * @param {string} itemId - L'ID de l'objet à supprimer.
-     * @param {number} [quantityToRemove=1] - La quantité à supprimer (par défaut 1).
-     * @returns {boolean} - True si la suppression a réussi, false sinon.
+     * @param {number} [quantityToRemove=1] - La quantité à supprimer.
+     * @returns {boolean} - True si la suppression (partielle ou totale) a réussi.
      */
     function removeItem(itemId, quantityToRemove = 1) {
+         // Vérifier si CombatManager est prêt pour logger
+         const canLog = typeof CombatManager !== 'undefined' && CombatManager.logMessage;
+
         const itemIndex = playerInventory.findIndex(item => item.id === itemId);
 
         if (itemIndex > -1) {
             const item = playerInventory[itemIndex];
             if (item.quantity >= quantityToRemove) {
                 item.quantity -= quantityToRemove;
-                // Si la quantité tombe à 0 ou moins, supprimer complètement l'objet
+                let removedCompletely = false;
                 if (item.quantity <= 0) {
-                    playerInventory.splice(itemIndex, 1); // Supprime l'élément du tableau
+                    playerInventory.splice(itemIndex, 1); // Supprime complètement
+                    removedCompletely = true;
+                     if (canLog) CombatManager.logMessage(`${item.name} retiré de l'inventaire.`);
+                } else {
+                     if (canLog) CombatManager.logMessage(`${quantityToRemove}x ${item.name} retiré(s) (Restant: ${item.quantity}).`);
                 }
-                // Si l'inventaire est ouvert, le rafraîchir
-                 if (isInventoryOpen) {
+                // Rafraîchir l'affichage si ouvert
+                if (isInventoryOpen) {
                     displayInventory();
-                 }
+                }
                 return true; // Suppression réussie
             } else {
-                // Pas assez d'objets pour supprimer la quantité demandée
-                console.warn(`Pas assez de ${item.name} pour en supprimer ${quantityToRemove}.`);
-                return false;
+                 if (canLog) CombatManager.logMessage(`Pas assez de ${item.name} pour en retirer ${quantityToRemove}.`);
+                return false; // Quantité insuffisante
             }
         } else {
-            // Objet non trouvé
-            console.warn(`Tentative de suppression d'un objet non possédé: ${itemId}`);
-            return false;
+             if (canLog) CombatManager.logMessage(`Tentative de retrait d'un objet non possédé: ${itemId}`);
+            return false; // Objet non trouvé
         }
     }
 
     /**
-     * Utilise un objet de l'inventaire en appliquant son effet.
+     * Tente d'utiliser un objet depuis l'inventaire (via l'UI de l'inventaire).
+     * Appelle applyItemEffect puis removeItem si réussi.
      * @param {string} itemId - L'ID de l'objet à utiliser.
      */
     function useItem(itemId) {
+        // Vérification joueur global
+        if (typeof player === 'undefined' || player === null) {
+             console.error("Erreur: Impossible d'utiliser un objet sans joueur défini.");
+             // Logger via CombatManager si possible
+              if (typeof CombatManager !== 'undefined' && CombatManager.logMessage) {
+                 CombatManager.logMessage("Erreur système: Joueur non trouvé pour utiliser l'objet.");
+              }
+             return;
+        }
+         // Vérifier si CombatManager est prêt pour logger/mettre à jour l'UI
+         const canLog = typeof CombatManager !== 'undefined' && CombatManager.logMessage;
+
         const itemIndex = playerInventory.findIndex(item => item.id === itemId);
 
         if (itemIndex > -1) {
             const item = playerInventory[itemIndex];
 
-            // Appliquer l'effet de l'objet
+             if (canLog) CombatManager.logMessage(`Vous essayez d'utiliser ${item.name}...`);
+
+            // Appliquer l'effet (via la fonction dédiée)
             if (applyItemEffect(item)) {
-                // Si l'effet a été appliqué avec succès, consommer l'objet
-                 CombatManager.logMessage(`Vous avez utilisé ${item.name}.`);
-                removeItem(itemId, 1); // Supprime une unité de l'objet
-                // Note: removeItem gère déjà la mise à jour de l'affichage si nécessaire
+                // L'effet a été appliqué avec succès, consommer l'objet
+                removeItem(itemId, 1); // removeItem gère la mise à jour de l'affichage si nécessaire
+                 // Pas besoin de logger à nouveau la réussite ici, applyItemEffect le fait déjà.
             } else {
-                 // L'effet n'a pas pu être appliqué (ex: HP déjà max)
-                 // Pas besoin de consommer l'objet dans ce cas.
+                 // L'effet n'a pas été appliqué (ex: HP déjà max)
+                 // applyItemEffect devrait déjà avoir loggé la raison de l'échec.
+                 // Ne pas consommer l'objet.
+            }
+            // Mettre à jour l'affichage pour refléter un éventuel changement d'état du bouton 'utiliser'
+            if (isInventoryOpen) {
+                displayInventory();
             }
         } else {
-            CombatManager.logMessage(`Vous n'avez pas de ${itemId} à utiliser.`); // Devrait pas arriver si l'UI est correcte
+             if (canLog) CombatManager.logMessage(`Vous n'avez pas de ${itemId} à utiliser.`);
         }
     }
 
     /**
      * Applique l'effet d'un objet sur le joueur.
-     * @param {object} item - L'objet dont l'effet doit être appliqué.
-     * @returns {boolean} - True si l'effet a été appliqué, false sinon (ex: HP max).
+     * Cette fonction est aussi utilisée par main.js pour l'utilisation en combat.
+     * @param {object} item - L'objet dont l'effet doit être appliqué (doit avoir une propriété `effect`).
+     * @returns {boolean} - True si l'effet a été appliqué et a eu un impact, false sinon.
      */
     function applyItemEffect(item) {
-        if (!item.effect || !player) return false;
+        // Vérifications cruciales
+        if (typeof player === 'undefined' || player === null) {
+             console.error("applyItemEffect: Joueur non défini.");
+             return false;
+        }
+        if (!item || typeof item.effect !== 'object') {
+             console.error("applyItemEffect: Objet ou effet invalide.", item);
+             return false;
+        }
+         // S'assurer que les fonctions de CombatManager nécessaires sont là
+         if (typeof CombatManager === 'undefined' || !CombatManager.logMessage || !CombatManager.setPlayerHp || !CombatManager.updatePlayerStatsDisplay) {
+             console.error("applyItemEffect: Dépendances CombatManager manquantes.");
+             return false;
+         }
 
         const effect = item.effect;
-        let effectApplied = false;
+        let effectApplied = false; // Devient true si l'action réussit ET change quelque chose
 
         switch (effect.action) {
             case 'heal':
+                if (typeof effect.amount !== 'number' || effect.amount <= 0) {
+                    CombatManager.logMessage(`L'effet de soin de ${item.name} est mal configuré.`);
+                    break; // Ne fait rien
+                }
                 if (player.hp < player.maxHp) {
                     const healAmount = effect.amount;
-                    const healedHp = Math.min(player.maxHp, player.hp + healAmount); // Ne pas dépasser maxHp
-                    const actualHeal = healedHp - player.hp; // Combien de HP ont réellement été restaurés
-                    // Utiliser la fonction dédiée de CombatManager s'il y en a une, sinon modifier directement
-                    if(typeof CombatManager !== 'undefined' && CombatManager.setPlayerHp) {
-                         CombatManager.setPlayerHp(healedHp);
+                    const oldHp = player.hp;
+                    const newHp = Math.min(player.maxHp, oldHp + healAmount);
+                    const actualHeal = newHp - oldHp;
+
+                    if (actualHeal > 0) {
+                        CombatManager.setPlayerHp(newHp); // Utilise la fonction de CombatManager
+                        CombatManager.logMessage(`Vous récupérez ${actualHeal} points de vie grâce à ${item.name}.`);
+                        effectApplied = true;
                     } else {
-                         player.hp = healedHp; // Modification directe (moins propre)
-                         CombatManager.updatePlayerStatsDisplay(); // Mise à jour manuelle si pas de setPlayerHp
+                         // Ce cas ne devrait pas arriver si player.hp < player.maxHp, mais sécurité
+                         CombatManager.logMessage(`${item.name} n'a eu aucun effet.`);
                     }
-                    CombatManager.logMessage(`Vous récupérez ${actualHeal} points de vie.`);
-                    effectApplied = true;
                 } else {
-                    CombatManager.logMessage("Vos points de vie sont déjà au maximum.");
-                    effectApplied = false; // L'effet n'a pas été "utile"
+                    CombatManager.logMessage(`Vos points de vie sont déjà au maximum. ${item.name} non utilisé.`);
+                    effectApplied = false; // N'a pas été utile
                 }
                 break;
-            // Ajouter d'autres types d'effets ici (ex: buff temporaire, cure poison, etc.)
-            // case 'buff':
-            //    // Logique pour appliquer un buff (peut nécessiter une gestion des effets actifs)
-            //    CombatManager.logMessage(`Vous vous sentez plus fort ! (${item.name})`);
-            //    effectApplied = true;
-            //    break;
+
+            // --- Autres exemples d'effets possibles ---
+            case 'buff':
+                // Exemple: Augmenter l'attaque temporairement (nécessiterait une gestion des buffs actifs)
+                // CombatManager.logMessage(`Vous vous sentez plus fort grâce à ${item.name} ! (+${effect.amount} ${effect.stat})`);
+                // // Ajouter logique pour appliquer et gérer la durée du buff...
+                // effectApplied = true;
+                CombatManager.logMessage(`${item.name} émet une lueur... (Effet 'buff' non implémenté)`);
+                effectApplied = false; // Non implémenté pour l'instant
+                break;
+
+            case 'passive':
+                // Les objets passifs ne sont généralement pas "utilisés" de cette manière
+                CombatManager.logMessage(`${item.name} est un objet passif et ne peut pas être utilisé.`);
+                effectApplied = false;
+                break;
+
+            case 'cure': // Exemple: Guérir un état (poison, etc.)
+                 // CombatManager.logMessage(`Vous vous sentez purifié par ${item.name}.`);
+                 // // Logique pour retirer un état négatif...
+                 // effectApplied = true;
+                 CombatManager.logMessage(`${item.name} brille faiblement... (Effet 'cure' non implémenté)`);
+                 effectApplied = false; // Non implémenté
+                 break;
+
             default:
-                console.warn(`Effet inconnu ou non géré: ${effect.action}`);
-                CombatManager.logMessage(`L'objet ${item.name} ne semble rien faire...`);
-                effectApplied = false; // Considéré comme non appliqué si l'action est inconnue
+                console.warn(`Effet inconnu ou non géré pour ${item.name}: ${effect.action}`);
+                CombatManager.logMessage(`L'objet ${item.name} ne semble rien faire pour le moment...`);
+                effectApplied = false;
         }
 
-        return effectApplied;
+        // Mettre à jour l'UI même si l'effet n'a rien fait (au cas où l'état aurait changé autrement)
+        // CombatManager.updatePlayerStatsDisplay(); // Déjà fait par setPlayerHp si appelé
+
+        return effectApplied; // Retourne true seulement si l'action a réussi ET a eu un effet concret
     }
 
 
@@ -180,7 +260,17 @@ const InventoryManager = (() => {
      * Affiche les objets de l'inventaire dans le DOM.
      */
     function displayInventory() {
-        inventoryItemList.innerHTML = ''; // Vider la liste actuelle
+         // Vérification joueur et éléments DOM
+         if (!inventoryItemList) {
+            console.error("displayInventory: Element 'inventory-items' non trouvé.");
+            return;
+         }
+         if (typeof player === 'undefined' || player === null) {
+             inventoryItemList.innerHTML = '<li>Erreur: Joueur non chargé.</li>';
+             return;
+         }
+
+        inventoryItemList.innerHTML = ''; // Vider
 
         if (playerInventory.length === 0) {
             inventoryItemList.innerHTML = '<li>Votre inventaire est vide.</li>';
@@ -190,28 +280,27 @@ const InventoryManager = (() => {
         playerInventory.forEach(item => {
             const li = document.createElement('li');
 
-            // Informations sur l'objet
+            // Informations (Nom, Quantité, Description effet)
             const itemInfo = document.createElement('span');
-            itemInfo.textContent = `${item.name} (x${item.quantity}) - ${item.effect?.description || 'Effet non défini'}`;
-            // Ajout de ?. pour sécurité si effect est manquant
+            const effectDesc = item.effect?.description || (item.effect?.action ? `Action: ${item.effect.action}` : 'Effet inconnu');
+            itemInfo.textContent = `${item.name} (x${item.quantity}) - ${effectDesc}`;
 
-            // Bouton d'utilisation
+            // Bouton Utiliser
             const useButton = document.createElement('button');
             useButton.textContent = 'Utiliser';
-            useButton.dataset.itemId = item.id; // Stocke l'ID pour le listener
-            useButton.classList.add('use-button'); // Classe pour le listener délégué
+            useButton.dataset.itemId = item.id;
+            useButton.classList.add('use-button');
 
-            // On pourrait désactiver le bouton si l'objet n'est pas utilisable (ex: clé)
-            // ou si certaines conditions ne sont pas remplies (ex: utiliser potion si HP max?)
-            if (!item.effect || item.effect.action === 'passive') { // Exemple: objet passif ou clé
-                // useButton.disabled = true;
-                 // useButton.textContent = 'Non utilisable';
-            }
-             // Désactiver utilisation de potion de soin si HP max
-             if (item.effect?.action === 'heal' && player.hp >= player.maxHp) {
+            // Désactiver bouton si non utilisable ou conditions non remplies
+            const isUsableAction = item.effect && !['passive'].includes(item.effect.action); // Exclut passifs
+            if (!isUsableAction) {
                  useButton.disabled = true;
-             }
-
+                 // useButton.textContent = 'Non utilisable';
+            } else if (item.effect.action === 'heal' && player.hp >= player.maxHp) {
+                 // Désactiver Potion de Soin si HP max
+                 useButton.disabled = true;
+            }
+            // Ajouter d'autres conditions de désactivation si nécessaire
 
             li.appendChild(itemInfo);
             li.appendChild(useButton);
@@ -220,85 +309,102 @@ const InventoryManager = (() => {
     }
 
     /**
-     * Ouvre l'interface de l'inventaire.
+     * Ouvre l'interface de l'inventaire (si les conditions le permettent).
      */
     function openInventory() {
-        // On pourrait vouloir empêcher l'ouverture pendant certaines actions (combat?)
-         if (CombatManager.isCombatActive() || BossCombatManager.isBossCombatActive()) {
-             CombatManager.logMessage("Vous ne pouvez pas ouvrir l'inventaire pendant un combat !");
-             // Note: L'utilisation d'objets EN COMBAT devrait être gérée différemment (ex: bouton dans l'UI de combat)
-             return;
-         }
+        // Vérifier les dépendances pour le log et l'état du combat
+        const canLog = typeof CombatManager !== 'undefined' && CombatManager.logMessage;
+        const combatActive = (typeof CombatManager !== 'undefined' && CombatManager.isCombatActive()) ||
+                             (typeof BossCombatManager !== 'undefined' && BossCombatManager.isBossCombatActive());
 
-        displayInventory(); // Mettre à jour le contenu
-        inventoryDisplay.style.display = 'block'; // Afficher
+        if (combatActive) {
+            if (canLog) CombatManager.logMessage("Vous ne pouvez pas ouvrir l'inventaire principal pendant un combat !");
+            return; // Ne pas ouvrir
+        }
+        // Vérifier si l'élément DOM existe
+        if (!inventoryDisplay) {
+            console.error("openInventory: Element 'inventory-display' non trouvé.");
+            return;
+        }
+
+        displayInventory(); // Mettre à jour le contenu avant d'afficher
+        inventoryDisplay.classList.remove('hidden'); // Afficher
         isInventoryOpen = true;
-        // CombatManager.logMessage("Inventaire ouvert.");
+        if (canLog) CombatManager.logMessage("Inventaire ouvert.");
+        // Pourrait désactiver d'autres contrôles (mouvement) ici si nécessaire
     }
 
     /**
      * Ferme l'interface de l'inventaire.
      */
     function closeInventory() {
-        inventoryDisplay.style.display = 'none'; // Cacher
+        // Vérifier si l'élément DOM existe
+        if (!inventoryDisplay) {
+            console.error("closeInventory: Element 'inventory-display' non trouvé.");
+            // L'état interne peut quand même être mis à jour
+        } else {
+             inventoryDisplay.classList.add('hidden'); // Cacher
+        }
+
         isInventoryOpen = false;
-        // CombatManager.logMessage("Inventaire fermé.");
+        const canLog = typeof CombatManager !== 'undefined' && CombatManager.logMessage;
+        if (canLog) CombatManager.logMessage("Inventaire fermé.");
+        // Réactiver les contrôles si désactivés à l'ouverture
     }
 
-    // --- Gestionnaires d'événements ---
+    // --- Gestionnaires d'événements Internes ---
 
-    // Listener pour le bouton de fermeture
-    closeInventoryButton.addEventListener('click', closeInventory);
+    // Listener pour le bouton de fermeture (vérifier existence)
+    if (closeInventoryButton) {
+        closeInventoryButton.addEventListener('click', closeInventory);
+    } else {
+         console.warn("Bouton 'close-inventory-button' non trouvé, la fermeture par bouton ne fonctionnera pas.");
+    }
 
-     // Listener pour le bouton d'ouverture principal
+
+     // Listener pour le bouton d'ouverture principal (vérifier existence)
      if (openInventoryButton) {
          openInventoryButton.addEventListener('click', () => {
              if (isInventoryOpen) {
-                 closeInventory(); // Si déjà ouvert, le bouton sert à fermer
+                 closeInventory();
              } else {
-                 openInventory(); // Sinon, il ouvre
+                 openInventory();
              }
          });
+     } else {
+         console.warn("Bouton 'open-inventory-button' non trouvé, l'ouverture/fermeture par ce bouton ne fonctionnera pas.");
      }
 
-    // Listener délégué pour les boutons "Utiliser"
-    inventoryItemList.addEventListener('click', (event) => {
-        if (event.target.classList.contains('use-button')) {
-            const itemId = event.target.dataset.itemId;
-            if (itemId) {
-                useItem(itemId);
+
+    // Listener délégué pour les boutons "Utiliser" dans la liste (vérifier existence)
+    if (inventoryItemList) {
+        inventoryItemList.addEventListener('click', (event) => {
+            // Vérifier si l'élément cliqué EST le bouton (pas un enfant) et a la classe/dataset
+            if (event.target.matches('button.use-button') && event.target.dataset.itemId) {
+                const itemId = event.target.dataset.itemId;
+                useItem(itemId); // Appeler la fonction d'utilisation
             }
-        }
-    });
+        });
+    } else {
+         console.warn("Conteneur 'inventory-items' non trouvé, l'utilisation des objets depuis l'inventaire ne fonctionnera pas.");
+    }
+
 
     // --- Interface Publique du Module ---
     return {
+        // Gestion des items
         addItem: addItem,
-        removeItem: removeItem, // Peut être utile pour d'autres systèmes (ex: quêtes)
-        useItem: useItem, // Utile si on veut déclencher l'utilisation depuis ailleurs
-        getInventory: () => [...playerInventory], // Retourne une copie pour éviter modification externe directe
+        removeItem: removeItem,
+        // Utilisation
+        useItem: useItem,           // Pour l'UI de l'inventaire
+        applyItemEffect: applyItemEffect, // Pour l'usage en combat (via main.js)
+        // Accès et affichage
+        getInventory: () => JSON.parse(JSON.stringify(playerInventory)), // Retourne une copie profonde pour sécurité
         displayInventory: displayInventory, // Pour rafraîchir si besoin depuis l'extérieur
+        // Contrôle UI
         openInventory: openInventory,
         closeInventory: closeInventory,
         isInventoryOpen: () => isInventoryOpen,
     };
 
 })(); // Fin de l'IIFE
-
-// Exemple d'utilisation :
-// InventoryManager.addItem({ id: 'potion_heal_1', name: "Potion de Soins Mineure", effect: { action: 'heal', amount: 25 } });
-// InventoryManager.addItem({ id: 'potion_heal_1', name: "Potion de Soins Mineure", effect: { action: 'heal', amount: 25 } }); // Ajoute une deuxième
-// InventoryManager.addItem({ id: 'key_1', name: "Clé rouillée", effect: { action: 'passive', description: 'Ouvre une porte.' } });
-// InventoryManager.openInventory();
-// Dans inventory.js, modifier l'interface publique :
- return {
-    addItem: addItem,
-    removeItem: removeItem,
-    useItem: useItem, // Déjà exposé
-    applyItemEffect: applyItemEffect, // <-- Exposer pour utilisation en combat
-    getInventory: () => [...playerInventory],
-    displayInventory: displayInventory,
-    openInventory: openInventory,
-    closeInventory: closeInventory,
-    isInventoryOpen: () => isInventoryOpen,
-};

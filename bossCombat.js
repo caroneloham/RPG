@@ -2,24 +2,21 @@
 /**
  * Module pour la gestion des combats contre les Boss.
  * Déclenché tous les 5 étages, avec des ennemis plus puissants et des récompenses accrues.
- * La logique est similaire à combat.js mais adaptée pour les boss.
  */
 
-// Réutiliser l'objet player défini globalement ou dans combat.js
-// Assurez-vous que 'player' est accessible ici.
-// let player = ... (on suppose qu'il est déjà défini et accessible)
+// Dépendances :
+// - Objet 'player' global (défini dans main.js)
+// - CombatManager (pour logMessage, updatePlayerStatsDisplay, gainExperience, isCombatActive)
+// - EnemyManager (pour getBaseStatsForFloor - avec fallback)
+// - Éléments DOM de l'interface de combat (partagés avec combat.js)
 
-// Récupération des éléments du DOM (les mêmes que pour combat.js, car on réutilise l'affichage)
-const bossCombatDisplay = document.getElementById('combat-display'); // On réutilise le même conteneur
-const bossCombatTitle = bossCombatDisplay.querySelector('h2'); // Pour changer le titre
+// Récupération des éléments du DOM (partagés)
+const bossCombatDisplayElement = document.getElementById('combat-display'); // Réutilise le même conteneur
+const bossCombatTitle = bossCombatDisplayElement ? bossCombatDisplayElement.querySelector('h2') : null; // Titre spécifique au combat
 const bossEnemyNameDisplay = document.getElementById('enemy-name');
 const bossEnemyHpDisplay = document.getElementById('enemy-hp');
 const bossEnemyMaxHpDisplay = document.getElementById('enemy-max-hp');
-const bossAttackButton = document.getElementById('attack-button'); // On réutilise le même bouton
-// Récupération du log du jeu (supposant qu'il est géré par CombatManager ou un module global)
-// Pour l'instant, on suppose l'existence de CombatManager.logMessage
-// et CombatManager.updatePlayerStatsDisplay pour la simplicité.
-// Idéalement, un module de logging/UI dédié serait mieux.
+// Note: Le listener pour attackButton est géré dans main.js
 
 const BossCombatManager = (() => {
 
@@ -27,53 +24,53 @@ const BossCombatManager = (() => {
     let isBossCombatActive = false; // Indicateur si un combat de boss est en cours
     let onBossCombatEndCallback = null; // Callback à appeler à la fin du combat
 
-    // --- Base de données ou Générateur de Boss ---
-    // Définit les caractéristiques des boss en fonction de l'étage.
-    // Ceci est un exemple simple, pourrait être plus complexe.
-    const bossData = {
-        5: { name: "Gardien du Seuil", hpMultiplier: 5, attackMultiplier: 1.5, defenseMultiplier: 1.2, xpMultiplier: 5, goldMultiplier: 10, specialAbilityChance: 0.1 },
-        10: { name: "Géant de Pierre", hpMultiplier: 8, attackMultiplier: 1.8, defenseMultiplier: 1.5, xpMultiplier: 8, goldMultiplier: 15, specialAbilityChance: 0.15 },
-        15: { name: "Hydre des Profondeurs", hpMultiplier: 12, attackMultiplier: 2.0, defenseMultiplier: 1.8, xpMultiplier: 12, goldMultiplier: 20, specialAbilityChance: 0.2 },
-        // Ajouter d'autres boss pour les étages supérieurs...
+    // --- Base de données des Boss ---
+    // Structure: étage -> { config boss }
+    const bossTemplates = {
+        5: { name: "Gardien du Seuil", hpMultiplier: 5, attackMultiplier: 1.5, defenseMultiplier: 1.2, xpMultiplier: 5, goldMultiplier: 10, specialAbilityChance: 0.15, specialDesc: "Frappe Puissante" },
+        10: { name: "Géant de Pierre", hpMultiplier: 8, attackMultiplier: 1.8, defenseMultiplier: 1.5, xpMultiplier: 8, goldMultiplier: 15, specialAbilityChance: 0.20, specialDesc: "Secousse Sismique" },
+        15: { name: "Hydre des Profondeurs", hpMultiplier: 12, attackMultiplier: 2.0, defenseMultiplier: 1.8, xpMultiplier: 12, goldMultiplier: 20, specialAbilityChance: 0.25, specialDesc: "Souffle Corrosif" },
+        // Ajouter d'autres boss...
+        // Boss générique si étage non défini ?
+        default: { name: "Ancien Gardien", hpMultiplier: 6, attackMultiplier: 1.6, defenseMultiplier: 1.3, xpMultiplier: 6, goldMultiplier: 12, specialAbilityChance: 0.18, specialDesc: "Énergie Sombre" }
     };
 
     /**
      * Génère les statistiques d'un boss pour un étage donné.
-     * @param {number} floorNumber - Le numéro de l'étage (doit être un multiple de 5).
-     * @returns {object|null} - L'objet boss avec ses statistiques, ou null si ce n'est pas un étage de boss.
+     * @param {number} floorNumber - Le numéro de l'étage (devrait être un multiple de 5).
+     * @returns {object|null} - L'objet boss avec ses statistiques, ou null en cas d'erreur majeure.
      */
     function generateBoss(floorNumber) {
-        if (floorNumber % 5 !== 0 || !bossData[floorNumber]) {
-            console.warn(`Pas de boss défini pour l'étage ${floorNumber}.`);
-            // Pourrait générer un boss générique basé sur l'étage si besoin
-            // Exemple : Boss générique
-            const baseHp = 50;
-            const baseAttack = 10;
-            const baseDefense = 5;
-            const baseXP = 100;
-            const baseGold = 50;
-            const scale = floorNumber / 5; // Facteur de difficulté basé sur l'étage
-            return {
-                name: `Boss de l'étage ${floorNumber}`,
-                hp: Math.round(baseHp * scale * 3), // Plus de HP
-                maxHp: Math.round(baseHp * scale * 3),
-                attack: Math.round(baseAttack * scale * 1.5), // Plus d'attaque
-                defense: Math.round(baseDefense * scale * 1.2), // Plus de défense
-                xpValue: Math.round(baseXP * scale * 2), // Plus d'XP
-                goldValue: Math.round(baseGold * scale * 3), // Plus d'Or
-                specialAbilityChance: 0.1 * scale, // Chance d'attaque spéciale augmente
-                isBoss: true
-            };
-           // return null; // Ou renvoyer un boss générique
+        // Sélectionne le template du boss, ou le template par défaut
+        const template = bossTemplates[floorNumber] || bossTemplates.default;
+        if (!template) {
+            console.error(`Aucun template de boss trouvé pour l'étage ${floorNumber}, même pas par défaut.`);
+            // Tenter de loguer via CombatManager si disponible
+             if (typeof CombatManager !== 'undefined' && CombatManager.logMessage) {
+                 CombatManager.logMessage(`Erreur: Impossible de générer le boss pour l'étage ${floorNumber}.`);
+             }
+            return null;
         }
 
-        const template = bossData[floorNumber];
-        // Calcul des stats basé sur les stats de base d'un ennemi standard du niveau ?
-        // Ou basé sur des valeurs fixes multipliées. Choisissons la 2e option pour l'instant.
-        // Supposons des stats de base pour un "ennemi normal" à cet étage
-        const baseStats = EnemyManager.getBaseStatsForFloor(floorNumber); // Suppose l'existence de cette fonction
+        // Essayer d'obtenir des stats de base via EnemyManager, sinon utiliser des valeurs par défaut
+        let baseStats;
+        if (typeof EnemyManager !== 'undefined' && typeof EnemyManager.getBaseStatsForFloor === 'function') {
+            baseStats = EnemyManager.getBaseStatsForFloor(floorNumber);
+        } else {
+            // Fallback si EnemyManager ou la fonction n'est pas disponible
+            console.warn("EnemyManager.getBaseStatsForFloor non trouvé. Utilisation de stats de base par défaut pour le boss.");
+            const baseLevelFactor = Math.max(1, floorNumber / 2); // Facteur simple basé sur l'étage
+            baseStats = {
+                hp: 30 * baseLevelFactor,
+                attack: 5 * baseLevelFactor,
+                defense: 2 * baseLevelFactor,
+                xpValue: 20 * baseLevelFactor,
+                goldValue: 15 * baseLevelFactor
+            };
+        }
 
-        return {
+        // Calculer les stats finales du boss
+        const finalBossStats = {
             name: template.name,
             hp: Math.round(baseStats.hp * template.hpMultiplier),
             maxHp: Math.round(baseStats.hp * template.hpMultiplier),
@@ -82,8 +79,19 @@ const BossCombatManager = (() => {
             xpValue: Math.round(baseStats.xpValue * template.xpMultiplier),
             goldValue: Math.round(baseStats.goldValue * template.goldMultiplier),
             specialAbilityChance: template.specialAbilityChance,
-            isBoss: true // Marqueur pour identifier un boss
+            specialAbilityDescription: template.specialDesc, // Description pour le log
+            isBoss: true // Marqueur
         };
+
+        // Assurer des valeurs minimales pour éviter les stats nulles ou négatives
+        finalBossStats.hp = Math.max(10, finalBossStats.hp);
+        finalBossStats.maxHp = Math.max(10, finalBossStats.maxHp);
+        finalBossStats.attack = Math.max(1, finalBossStats.attack);
+        finalBossStats.defense = Math.max(0, finalBossStats.defense); // La défense peut être 0
+        finalBossStats.xpValue = Math.max(0, finalBossStats.xpValue);
+        finalBossStats.goldValue = Math.max(0, finalBossStats.goldValue);
+
+        return finalBossStats;
     }
 
     /**
@@ -91,91 +99,123 @@ const BossCombatManager = (() => {
      */
     function updateBossDisplay() {
         if (!currentBoss || !isBossCombatActive) return;
-        bossEnemyNameDisplay.textContent = `${currentBoss.name} (BOSS)`; // Ajoute (BOSS)
+         // Vérification des éléments DOM
+         if (!bossEnemyNameDisplay || !bossEnemyHpDisplay || !bossEnemyMaxHpDisplay) {
+             console.error("Un ou plusieurs éléments DOM pour les stats ennemi sont manquants (Boss).");
+             return;
+         }
+        bossEnemyNameDisplay.textContent = `${currentBoss.name} (BOSS)`;
         bossEnemyHpDisplay.textContent = currentBoss.hp;
         bossEnemyMaxHpDisplay.textContent = currentBoss.maxHp;
     }
 
     /**
-     * Calcule les dégâts infligés (peut être identique à combat.js).
+     * Calcule les dégâts infligés (peut utiliser la fonction de CombatManager si exposée,
+     * sinon on la réimplémente ou on la copie). Utilisons celle de CombatManager si possible.
      * @param {number} attackerAttack - Statistique d'attaque de l'attaquant.
      * @param {number} defenderDefense - Statistique de défense du défenseur.
      * @returns {number} - Les dégâts infligés.
      */
     function calculateDamage(attackerAttack, defenderDefense) {
-        // On peut réutiliser la même formule que pour les combats normaux
-        // ou la rendre légèrement différente pour les boss.
-        const damage = Math.max(1, attackerAttack - defenderDefense);
-        const variation = Math.random() * 0.2 - 0.1; // +/- 10% variation
-        return Math.round(damage * (1 + variation));
+        // Tenter d'utiliser la fonction centralisée de CombatManager
+        if (typeof CombatManager !== 'undefined' && typeof CombatManager.calculateDamage === 'function') {
+            // Note: calculateDamage n'a pas été exposé dans la version précédente de combat.js.
+            // Il faudrait l'exposer ou recopier la logique ici. Recopions pour l'instant.
+             const baseDamage = attackerAttack - defenderDefense;
+             const variation = Math.random() * 0.2 + 0.9; // entre 0.9 et 1.1 ( +/- 10%)
+             const finalDamage = Math.round(baseDamage * variation);
+             return Math.max( (attackerAttack > 0 ? 1 : 0) , finalDamage);
+        } else {
+            // Fallback si CombatManager ou sa fonction de calcul n'est pas là
+            console.warn("CombatManager.calculateDamage non trouvé, utilisation d'un calcul local.");
+            return Math.max(1, attackerAttack - defenderDefense); // Calcul simple
+        }
     }
 
     /**
      * Gère l'action d'attaque du joueur contre le boss.
+     * Exposée pour être appelée par le listener centralisé dans main.js.
      */
     function playerAttackBoss() {
+        // Vérification joueur global
+        if (typeof player === 'undefined' || player === null) {
+             CombatManager.logMessage("Erreur : Attaque de boss impossible sans joueur défini.");
+             return;
+        }
         if (!isBossCombatActive || !currentBoss || player.hp <= 0) return;
 
-        // 1. Calculer les dégâts infligés par le joueur
+        // Désactiver bouton attaque temporairement? (géré dans main.js potentiellement)
+
+        // 1. Calculer dégâts joueur -> boss
         const damageDealt = calculateDamage(player.attack, currentBoss.defense);
         currentBoss.hp = Math.max(0, currentBoss.hp - damageDealt);
-        CombatManager.logMessage(`Vous attaquez le boss ${currentBoss.name} et infligez ${damageDealt} points de dégâts.`); // Utilisation du logger partagé
+        CombatManager.logMessage(`Vous attaquez le boss ${currentBoss.name} et infligez ${damageDealt} points de dégâts.`);
         updateBossDisplay();
 
-        // 2. Vérifier si le boss est vaincu
+        // 2. Vérifier si boss vaincu
         if (currentBoss.hp <= 0) {
             CombatManager.logMessage(`Vous avez vaincu le puissant ${currentBoss.name} !`);
-            endBossCombat(true); // Le joueur a gagné
+            endBossCombat(true); // Joueur gagne
             return; // Combat terminé
         }
 
-        // 3. Si le boss survit, il attaque
-        bossAttack();
+        // 3. Riposte du boss (après délai)
+        setTimeout(() => {
+            bossAttack();
+            // Réactiver bouton attaque? (géré dans main.js potentiellement)
+        }, 600); // Délai légèrement plus long pour les boss?
     }
 
     /**
      * Gère l'action d'attaque du boss (peut inclure des compétences spéciales).
+     * Exposée pour être appelée par main.js (après usage d'objet en combat).
      */
     function bossAttack() {
+         // Vérification joueur global
+         if (typeof player === 'undefined' || player === null) {
+             CombatManager.logMessage("Erreur : Le boss ne peut attaquer car le joueur est indéfini.");
+             return;
+         }
         if (!isBossCombatActive || !currentBoss || currentBoss.hp <= 0 || player.hp <= 0) return;
 
-        // Décider si le boss utilise une attaque spéciale
+        // Décider si capacité spéciale
         if (Math.random() < currentBoss.specialAbilityChance) {
-            executeBossSpecialAbility(); // Implémenter cette fonction
+            executeBossSpecialAbility();
         } else {
             // Attaque normale
             const damageTaken = calculateDamage(currentBoss.attack, player.defense);
             player.hp = Math.max(0, player.hp - damageTaken);
             CombatManager.logMessage(`Le boss ${currentBoss.name} vous attaque et inflige ${damageTaken} points de dégâts.`);
-            CombatManager.updatePlayerStatsDisplay(); // Met à jour l'affichage joueur
+            CombatManager.updatePlayerStatsDisplay(); // Met à jour affichage joueur via CombatManager
         }
 
-
-        // Vérifier si le joueur est vaincu
+        // Vérifier si joueur vaincu après l'attaque du boss
         if (player.hp <= 0) {
             CombatManager.logMessage(`Vous avez été écrasé par ${currentBoss.name}...`);
-            endBossCombat(false); // Le joueur a perdu
+            endBossCombat(false); // Joueur perd
         }
     }
 
     /**
-     * Exécute une capacité spéciale du boss (à développer).
+     * Exécute une capacité spéciale du boss.
      */
     function executeBossSpecialAbility() {
-        // Exemple simple : une attaque plus puissante
-        const damageMultiplier = 1.5; // Attaque spéciale fait 50% de dégâts en plus
-        const damageTaken = calculateDamage(currentBoss.attack * damageMultiplier, player.defense);
-        player.hp = Math.max(0, player.hp - damageTaken);
+        // Vérification joueur global
+        if (typeof player === 'undefined' || player === null) return;
+        if (!currentBoss) return;
 
-        CombatManager.logMessage(`Attaque spéciale ! ${currentBoss.name} utilise [Nom Capacité] et vous inflige ${damageTaken} points de dégâts !`);
+        const abilityName = currentBoss.specialAbilityDescription || "Capacité Spéciale";
+        CombatManager.logMessage(`Le boss ${currentBoss.name} utilise ${abilityName} !`);
+
+        // Logique d'effet simple : attaque plus puissante
+        const damageMultiplier = 1.5 + Math.random() * 0.5; // Entre 1.5x et 2.0x dégâts
+        const specialDamage = calculateDamage(currentBoss.attack * damageMultiplier, player.defense);
+        player.hp = Math.max(0, player.hp - specialDamage);
+
+        CombatManager.logMessage(`L'attaque vous inflige ${specialDamage} points de dégâts critiques !`);
         CombatManager.updatePlayerStatsDisplay();
 
-        // Autres idées de capacités spéciales :
-        // - Réduction de la défense du joueur temporairement
-        // - Vol de vie
-        // - Invocation d'aides (non géré pour l'instant)
-        // - Attaque de zone (si plusieurs personnages jouables)
-        // - Auto-buff (augmentation attaque/défense)
+        // Ajouter d'autres types de capacités si besoin (debuff, self-buff, etc.)
     }
 
     /**
@@ -185,41 +225,63 @@ const BossCombatManager = (() => {
      * @returns {boolean} - True si le combat a pu démarrer, false sinon.
      */
     function startBossCombat(floorNumber, onEndCallback) {
-        const boss = generateBoss(floorNumber);
-        if (!boss) {
-            console.error(`Impossible de générer le boss pour l'étage ${floorNumber}.`);
-            // Appeler le callback avec une indication d'échec ou de non-combat?
-            if (onEndCallback) onEndCallback(true); // Considérer comme "gagné" car pas de combat
-            return false;
-        }
-         if (isBossCombatActive || CombatManager.isCombatActive()) {
-             console.error("Impossible de démarrer le combat de boss : un autre combat est déjà en cours.");
+         // Vérification joueur global
+         if (typeof player === 'undefined' || player === null) {
+             CombatManager.logMessage("Erreur critique : Impossible de démarrer un combat de boss sans joueur défini.");
+             if (onEndCallback) onEndCallback(false); // Échec
              return false;
          }
+         // Vérifier si CombatManager est disponible pour les dépendances
+         if (typeof CombatManager === 'undefined' || !CombatManager.logMessage || !CombatManager.updatePlayerStatsDisplay || !CombatManager.gainExperience) {
+              console.error("Dépendance manquante : CombatManager n'est pas entièrement initialisé.");
+              alert("Erreur critique : Impossible de lancer le combat de boss (dépendance manquante).");
+              if (onEndCallback) onEndCallback(false);
+              return false;
+         }
+         // Vérifier si un autre combat est déjà en cours
+         if (CombatManager.isCombatActive() || isBossCombatActive) {
+             CombatManager.logMessage("Impossible de démarrer le combat : un autre combat est déjà en cours.");
+             // Ne pas appeler le callback ici car le combat précédent continue.
+             return false; // Indique que le combat n'a pas démarré
+         }
 
+        const boss = generateBoss(floorNumber);
+        if (!boss) {
+            CombatManager.logMessage(`Erreur lors de la génération du boss pour l'étage ${floorNumber}. Le passage est libre.`);
+            // Considérer comme "gagné" car pas de combat, on peut continuer.
+            if (onEndCallback) onEndCallback(true);
+            return false; // Le combat lui-même n'a pas démarré
+        }
 
         currentBoss = boss;
         isBossCombatActive = true;
         onBossCombatEndCallback = onEndCallback;
 
         // Afficher l'interface de combat et adapter le titre
-        bossCombatDisplay.style.display = 'block'; // Assurez-vous qu'il est visible
-        bossCombatTitle.textContent = "COMBAT DE BOSS !"; // Changer le titre
+         if (!bossCombatDisplayElement || !bossCombatTitle) {
+             console.error("Éléments DOM pour l'affichage du combat de boss manquants !");
+             // Continuer sans UI? Ou annuler? Annulons pour être sûr.
+             CombatManager.logMessage("Erreur d'interface: impossible d'afficher le combat de boss.");
+             isBossCombatActive = false; // Annuler l'état
+             currentBoss = null;
+             if (onEndCallback) onEndCallback(false); // Échec
+             return false;
+         }
+        bossCombatDisplayElement.classList.remove('hidden');
+        bossCombatTitle.textContent = "COMBAT DE BOSS !!!"; // Titre dramatique
         updateBossDisplay();
         CombatManager.updatePlayerStatsDisplay(); // Afficher stats joueur à jour
 
         CombatManager.logMessage(`Attention ! Le boss de l'étage, ${currentBoss.name}, bloque le passage !`);
 
-        // Activer le bouton d'attaque (on réutilise le même bouton)
-        bossAttackButton.disabled = false;
-        // Important : Il faudra s'assurer que le listener du bouton d'attaque dans combat.js
-        // ne réagit pas pendant un combat de boss, et vice-versa.
-        // Une solution est d'avoir une seule fonction qui gère le clic et redirige
-        // vers playerAttack() ou playerAttackBoss() selon l'état (isCombatActive vs isBossCombatActive).
-        // Pour l'instant, on suppose que le listener de combat.js est inactif ou gère ce cas.
-        // (Voir Étape 7 pour une meilleure gestion des listeners)
+        // Activer les boutons d'action via main.js
+        const attackBtnRef = document.getElementById('attack-button');
+        if (attackBtnRef) attackBtnRef.disabled = false;
+        const combatInvBtn = document.getElementById('combat-inventory-button');
+         if(combatInvBtn) combatInvBtn.classList.remove('hidden');
 
-        return true;
+
+        return true; // Combat démarré avec succès
     }
 
     /**
@@ -229,96 +291,68 @@ const BossCombatManager = (() => {
     function endBossCombat(playerWon) {
         if (!isBossCombatActive) return;
 
-        isBossCombatActive = false;
-        bossAttackButton.disabled = true; // Désactiver action
+        // Vérification joueur global pour le butin
+        if (typeof player === 'undefined' || player === null) {
+             CombatManager.logMessage("Erreur : Fin de combat de boss sans joueur défini pour le butin.");
+        }
+
+        // Désactiver les boutons d'action
+        const attackBtnRef = document.getElementById('attack-button');
+        if (attackBtnRef) attackBtnRef.disabled = true;
+        const combatInvBtn = document.getElementById('combat-inventory-button');
+        if(combatInvBtn) combatInvBtn.classList.add('hidden');
+        const combatInvList = document.getElementById('combat-inventory-list');
+        if(combatInvList) combatInvList.classList.add('hidden');
 
         if (playerWon) {
-            // Gain d'XP et d'or (plus important pour les boss)
-            CombatManager.gainExperience(currentBoss.xpValue); // Utilise la fonction de combat.js
-            player.gold += currentBoss.goldValue;
-            CombatManager.logMessage(`Vous avez triomphé et recevez ${currentBoss.goldValue} pièces d'or !`);
-            // Potentiellement, gain d'objets spéciaux (à gérer avec l'inventaire)
-            // InventoryManager.addItem(obtenirLootSpecialBoss());
-             CombatManager.updatePlayerStatsDisplay(); // Mettre à jour affichage
-
+            if (currentBoss && player && CombatManager.gainExperience) {
+                // Gain d'XP et Or (via CombatManager)
+                CombatManager.gainExperience(currentBoss.xpValue);
+                player.gold += currentBoss.goldValue;
+                CombatManager.logMessage(`Vous avez triomphé et recevez ${currentBoss.goldValue} pièces d'or !`);
+                // Gérer loot spécial? (Ex: via InventoryManager)
+                // if (typeof InventoryManager !== 'undefined' && InventoryManager.addItem) {
+                //     InventoryManager.addItem({id: `boss_loot_${currentFloor}`, name: `Trophée de ${currentBoss.name}`, quantity: 1, effect: { action: 'passive', description: 'Preuve de victoire.'}});
+                // }
+                 CombatManager.updatePlayerStatsDisplay(); // Mettre à jour affichage
+            }
         } else {
             // Gérer la défaite du joueur contre un boss
             CombatManager.logMessage("Game Over ! Le boss était trop puissant.");
-            alert("Vous avez été vaincu par le Boss ! Rechargez la page pour réessayer."); // Temporaire
-            // Logique de Game Over
+            // La logique de Game Over est gérée dans main.js via le callback
         }
 
         // Cacher l'interface de combat après un délai et remettre le titre normal
         setTimeout(() => {
-            bossCombatDisplay.style.display = 'none';
-            bossCombatTitle.textContent = "Combat !"; // Remettre le titre par défaut
+            if (bossCombatDisplayElement) bossCombatDisplayElement.classList.add('hidden');
+            if (bossCombatTitle) bossCombatTitle.textContent = "Combat !"; // Remettre titre par défaut
         }, 2000); // Attend 2s
 
-        // Appeler le callback de fin de combat s'il existe
-        if (onBossCombatEndCallback) {
-            onBossCombatEndCallback(playerWon);
-            onBossCombatEndCallback = null;
-        }
-
+        // Réinitialiser l'état AVANT d'appeler le callback
+        const callback = onBossCombatEndCallback;
+        isBossCombatActive = false;
         currentBoss = null;
+        onBossCombatEndCallback = null;
+
+        // Appeler le callback
+        if (callback) {
+            callback(playerWon);
+        }
     }
 
-
-    // --- Gestion des événements (problème potentiel avec combat.js) ---
-    // Solution possible : Avoir un gestionnaire centralisé dans main.js ou
-    // que le listener vérifie quel type de combat est actif.
-    // Pour l'instant, on suppose que le listener de combat.js suffit et qu'il
-    // appellera playerAttackBoss si isBossCombatActive est true.
-    // CELA NECESSITERA UNE MODIFICATION DANS combat.js ou une gestion centralisée.
-
-    // Modification suggérée pour le listener dans combat.js :
-    /*
-    attackButton.addEventListener('click', () => {
-        if (CombatManager.isCombatActive()) {
-            CombatManager.playerAttack(); // Appel interne à combat.js
-        } else if (BossCombatManager.isBossCombatActive()) {
-            BossCombatManager.playerAttackBoss(); // Appel à ce module
-        }
-    });
-    */
-    // Il faudrait donc exposer playerAttackBoss publiquement si on adopte cette approche.
+    // --- Gestion des événements ---
+    // Pas de listeners directs ici, gérés par main.js
 
 
     // --- Interface Publique du Module ---
     return {
         startBossCombat: startBossCombat,
         isBossCombatActive: () => isBossCombatActive,
-        // Exposer la fonction d'attaque joueur pour le listener centralisé (si besoin)
-        playerAttackBoss: playerAttackBoss,
-         // Exposer la fonction de génération pour d'éventuels besoins externes
-         generateBoss: generateBoss
+        // Fonctions appelées par main.js:
+        playerAttackBoss: playerAttackBoss, // Pour le listener centralisé
+        bossAttack: bossAttack,           // Pour la riposte après usage d'objet
+        // Potentiellement utile pour des vérifications externes:
+        generateBoss: generateBoss
     };
 
 })(); // Fin de l'IIFE
-
-// Exemple d'utilisation (typiquement appelé par la logique principale quand le joueur atteint l'étage N*5)
-/*
-const currentFloor = 5; // A récupérer dynamiquement
-if (currentFloor % 5 === 0) {
-    // Essayer de démarrer le combat de boss
-    const bossStarted = BossCombatManager.startBossCombat(currentFloor, (playerWon) => {
-        console.log("Combat de Boss terminé. Le joueur a gagné :", playerWon);
-        if (playerWon) {
-            // Permettre au joueur de descendre à l'étage suivant
-        } else {
-            // Gérer le game over
-        }
-    });
-    if (!bossStarted) {
-        // Gérer le cas où le combat n'a pas pu démarrer (ex: autre combat en cours)
-    }
-}
-*/
-// Dans bossCombat.js, modifier l'interface publique :
-return {
-    startBossCombat: startBossCombat,
-    isBossCombatActive: () => isBossCombatActive,
-    playerAttackBoss: playerAttackBoss, // <-- Exposer cette fonction
-    generateBoss: generateBoss
-    // Pas de listener à gérer ici
-};

@@ -5,28 +5,17 @@
  * la gestion des HP, l'XP et la montée de niveau du joueur.
  */
 
-// Assumons l'existence d'un objet global ou d'un module pour le joueur
-// Pour cet exemple, nous allons le définir ici, mais il devrait idéalement
-// être dans son propre module ou dans un état global du jeu.
-let player = {
-    level: 1,
-    hp: 100,
-    maxHp: 100,
-    attack: 10,
-    defense: 5,
-    xp: 0,
-    xpToNextLevel: 100,
-    gold: 0,
-    // Potentiellement d'autres stats ou inventaire
-    // inventory: InventoryManager.getInventory() // Exemple d'intégration future
-};
+// Ce module dépend de l'objet 'player' qui doit être défini globalement
+// (par exemple, dans main.js : window.player = playerObject)
+// Il dépend aussi des éléments du DOM définis dans index.html.
 
 // Récupération des éléments du DOM pour l'affichage du combat et du log
-const combatDisplay = document.getElementById('combat-display');
+const combatDisplayElement = document.getElementById('combat-display'); // Renommé pour clarté vs la variable globale potentielle
 const enemyNameDisplay = document.getElementById('enemy-name');
 const enemyHpDisplay = document.getElementById('enemy-hp');
 const enemyMaxHpDisplay = document.getElementById('enemy-max-hp');
-const attackButton = document.getElementById('attack-button');
+// Note: Le listener pour attackButton est maintenant dans main.js
+// const attackButton = document.getElementById('attack-button');
 const gameLogList = document.getElementById('log-list');
 
 // Récupération des éléments du DOM pour les stats du joueur (pour mise à jour)
@@ -51,6 +40,15 @@ const CombatManager = (() => {
      * @param {string} message - Le message à afficher.
      */
     function logMessage(message) {
+        // Vérifie si l'objet player global est accessible
+        if (typeof player === 'undefined') {
+            console.error("Objet 'player' global non trouvé par CombatManager.logMessage");
+            // return; // On pourrait arrêter ici, mais le log est utile même sans joueur
+        }
+        if (!gameLogList) {
+            console.error("Élément 'log-list' non trouvé.");
+            return;
+        }
         const li = document.createElement('li');
         li.textContent = message;
         gameLogList.appendChild(li);
@@ -62,7 +60,26 @@ const CombatManager = (() => {
      * Met à jour l'affichage des statistiques du joueur dans l'interface.
      */
     function updatePlayerStatsDisplay() {
-        if (!player) return; // Sécurité
+        // Vérifie si l'objet player global est accessible
+        if (typeof player === 'undefined' || player === null) {
+            console.warn("Tentative de mise à jour de l'UI sans objet 'player' global défini.");
+            // Mettre des valeurs par défaut ou vider ? Pour l'instant, on sort.
+             // Vider les champs serait peut-être mieux :
+             /*
+             playerLevelDisplay.textContent = '-';
+             playerHpDisplay.textContent = '-';
+             playerMaxHpDisplay.textContent = '-';
+             // ... etc ...
+             */
+            return;
+        }
+        // Vérifie si les éléments du DOM existent
+        if (!playerLevelDisplay || !playerHpDisplay || !playerMaxHpDisplay || !playerAttackDisplay ||
+            !playerDefenseDisplay || !playerXpDisplay || !playerXpNextDisplay || !playerGoldDisplay) {
+            console.error("Un ou plusieurs éléments DOM pour les stats joueur sont manquants.");
+            return;
+        }
+
         playerLevelDisplay.textContent = player.level;
         playerHpDisplay.textContent = player.hp;
         playerMaxHpDisplay.textContent = player.maxHp;
@@ -71,10 +88,9 @@ const CombatManager = (() => {
         playerXpDisplay.textContent = player.xp;
         playerXpNextDisplay.textContent = player.xpToNextLevel;
         playerGoldDisplay.textContent = player.gold;
-        // Mettre à jour l'étage aussi si nécessaire (géré ailleurs potentiellement)
-        // dungeonFloorDisplay.textContent = currentFloor;
     }
-     // Appel initial pour afficher les stats au chargement
+     // Appel initial pour essayer d'afficher les stats au chargement
+     // Note: 'player' pourrait ne pas être encore défini ici, d'où les vérifications.
      updatePlayerStatsDisplay();
 
     /**
@@ -82,6 +98,10 @@ const CombatManager = (() => {
      */
     function updateEnemyDisplay() {
         if (!currentEnemy || !isCombatActive) return;
+        if (!enemyNameDisplay || !enemyHpDisplay || !enemyMaxHpDisplay) {
+             console.error("Un ou plusieurs éléments DOM pour les stats ennemi sont manquants.");
+             return;
+        }
         enemyNameDisplay.textContent = currentEnemy.name;
         enemyHpDisplay.textContent = currentEnemy.hp;
         enemyMaxHpDisplay.textContent = currentEnemy.maxHp;
@@ -95,16 +115,25 @@ const CombatManager = (() => {
      * @returns {number} - Les dégâts infligés.
      */
     function calculateDamage(attackerAttack, defenderDefense) {
-        const damage = Math.max(1, attackerAttack - defenderDefense);
-        // On pourrait ajouter une variation aléatoire ici (ex: +/- 10%)
-        const variation = Math.random() * 0.2 - 0.1; // entre -10% et +10%
-        return Math.round(damage * (1 + variation));
+        const baseDamage = attackerAttack - defenderDefense;
+        // Ajouter une petite variation aléatoire pour rendre moins prévisible
+        const variation = Math.random() * 0.2 + 0.9; // entre 0.9 et 1.1 ( +/- 10%)
+        const finalDamage = Math.round(baseDamage * variation);
+
+        // Assurer un minimum de 1 dégât si l'attaque > 0, sinon 0.
+        return Math.max( (attackerAttack > 0 ? 1 : 0) , finalDamage);
     }
 
      /**
      * Gère la montée de niveau du joueur.
      */
     function levelUp() {
+         // Vérifie si l'objet player global est accessible
+         if (typeof player === 'undefined' || player === null) {
+             logMessage("Erreur : Impossible de monter de niveau sans joueur défini.");
+             return;
+         }
+
         player.level++;
         player.xp -= player.xpToNextLevel; // Garde l'excédent d'XP
 
@@ -117,7 +146,7 @@ const CombatManager = (() => {
         // Calcul de l'XP nécessaire pour le prochain niveau (exemple : augmente de 50%)
         player.xpToNextLevel = Math.round(player.xpToNextLevel * 1.5);
 
-        logMessage(`Niveau supérieur ! Vous êtes maintenant niveau ${player.level}.`);
+        logMessage(`Niveau supérieur ! Vous êtes maintenant niveau ${player.level}. Stats améliorées, HP restaurés !`);
         updatePlayerStatsDisplay(); // Mettre à jour l'affichage
 
         // Vérifier si on peut encore monter de niveau avec l'XP restante
@@ -129,10 +158,16 @@ const CombatManager = (() => {
 
     /**
      * Gère le gain d'XP et la potentielle montée de niveau.
+     * Exposée pour être utilisée par bossCombat.js également.
      * @param {number} xpGained - La quantité d'XP gagnée.
      */
     function gainExperience(xpGained) {
-        if (!player || xpGained <= 0) return;
+         // Vérifie si l'objet player global est accessible
+         if (typeof player === 'undefined' || player === null) {
+             logMessage("Erreur : Impossible de gagner de l'XP sans joueur défini.");
+             return;
+         }
+         if (xpGained <= 0) return;
 
         player.xp += xpGained;
         logMessage(`Vous gagnez ${xpGained} points d'expérience.`);
@@ -148,9 +183,18 @@ const CombatManager = (() => {
 
     /**
      * Gère l'action d'attaque du joueur.
+     * Exposée pour être appelée par le listener centralisé dans main.js.
      */
     function playerAttack() {
-        if (!isCombatActive || !currentEnemy || player.hp <= 0) return;
+        // Vérifie si l'objet player global est accessible
+        if (typeof player === 'undefined' || player === null) {
+             logMessage("Erreur : Attaque impossible sans joueur défini.");
+             return;
+        }
+        if (!isCombatActive || !currentEnemy || player.hp <= 0) return; // Conditions de combat standard
+
+        // Désactiver temporairement le bouton pour éviter double-clic ? (Optionnel)
+        // attackButton.disabled = true; // Nécessiterait la référence au bouton
 
         // 1. Calculer les dégâts infligés par le joueur
         const damageDealt = calculateDamage(player.attack, currentEnemy.defense);
@@ -162,17 +206,29 @@ const CombatManager = (() => {
         if (currentEnemy.hp <= 0) {
             logMessage(`Vous avez vaincu ${currentEnemy.name} !`);
             endCombat(true); // Le joueur a gagné
+            // Réactiver le bouton ici si désactivé avant
+            // if (attackButton) attackButton.disabled = false;
             return; // Le combat est terminé, l'ennemi n'attaque pas
         }
 
-        // 3. Si l'ennemi survit, il attaque à son tour
-        enemyAttack();
+        // 3. Si l'ennemi survit, il attaque à son tour (après un court délai pour lisibilité?)
+        setTimeout(() => {
+            enemyAttack();
+            // Réactiver le bouton après l'attaque ennemie si désactivé
+            // if (attackButton) attackButton.disabled = false;
+        }, 500); // Délai de 500ms avant la riposte
     }
 
     /**
      * Gère l'action d'attaque de l'ennemi.
+     * Exposée pour être appelée par main.js (après utilisation d'objet).
      */
     function enemyAttack() {
+         // Vérifie si l'objet player global est accessible
+         if (typeof player === 'undefined' || player === null) {
+             logMessage("Erreur : L'ennemi ne peut attaquer car le joueur est indéfini.");
+             return;
+         }
         if (!isCombatActive || !currentEnemy || currentEnemy.hp <= 0 || player.hp <= 0) return;
 
         // 1. Calculer les dégâts infligés par l'ennemi
@@ -195,25 +251,51 @@ const CombatManager = (() => {
      * @param {function} onEndCallback - Fonction à appeler lorsque le combat se termine.
      */
     function startCombat(enemyData, onEndCallback) {
-        if (!enemyData || isCombatActive) {
-            console.error("Impossible de démarrer le combat : données ennemies manquantes ou combat déjà en cours.");
+         // Vérifie si l'objet player global est accessible
+         if (typeof player === 'undefined' || player === null) {
+             logMessage("Erreur critique : Impossible de démarrer un combat sans joueur défini.");
+             // Peut-être appeler le callback avec 'false' pour indiquer l'échec ?
+              if (onEndCallback) onEndCallback(false);
+             return;
+         }
+        if (!enemyData) {
+            console.error("Impossible de démarrer le combat : données ennemies manquantes.");
+             if (onEndCallback) onEndCallback(true); // Considérer comme gagné car pas d'ennemi?
             return;
         }
+        if (isCombatActive || (typeof BossCombatManager !== 'undefined' && BossCombatManager.isBossCombatActive())) {
+             console.warn("Tentative de démarrer un combat alors qu'un autre est déjà en cours.");
+             // Ne pas démarrer un nouveau combat
+             return;
+        }
+
 
         currentEnemy = { ...enemyData }; // Crée une copie pour ne pas modifier l'original
         isCombatActive = true;
         onCombatEndCallback = onEndCallback; // Stocker le callback
 
         // Afficher l'interface de combat
-        combatDisplay.style.display = 'block'; // Ou utiliser .remove('hidden')
+        if (!combatDisplayElement) {
+             console.error("Élément 'combat-display' non trouvé.");
+             // Le combat ne peut pas être affiché, mais la logique pourrait continuer?
+        } else {
+            combatDisplayElement.classList.remove('hidden');
+            const combatTitle = combatDisplayElement.querySelector('h2');
+            if(combatTitle) combatTitle.textContent = "Combat !"; // Assurer le titre standard
+        }
+
         updateEnemyDisplay();
         updatePlayerStatsDisplay(); // Assure que les stats du joueur sont à jour au début
 
         logMessage(`Un ${currentEnemy.name} apparaît !`);
 
-        // Activer les boutons d'action du joueur (pour l'instant juste Attaquer)
-        attackButton.disabled = false;
-        // Ajouter des listeners ici si ce n'est pas déjà fait globalement
+        // Activer les boutons d'action (le listener est dans main.js)
+        const attackBtnRef = document.getElementById('attack-button'); // Re-récupérer la référence si besoin
+        if (attackBtnRef) attackBtnRef.disabled = false;
+        // Gérer bouton inventaire combat (dans main.js ou ici?)
+         const combatInvBtn = document.getElementById('combat-inventory-button');
+         if(combatInvBtn) combatInvBtn.classList.remove('hidden');
+
     }
 
     /**
@@ -223,98 +305,106 @@ const CombatManager = (() => {
     function endCombat(playerWon) {
         if (!isCombatActive) return;
 
-        isCombatActive = false;
-        attackButton.disabled = true; // Désactiver les actions
+        // Vérifie si l'objet player global est accessible (utile pour le butin)
+        if (typeof player === 'undefined' || player === null) {
+             logMessage("Erreur : Fin de combat sans joueur défini pour attribuer le butin.");
+             // Le reste de la fonction peut continuer pour cacher l'UI, etc.
+        }
+
+        const attackBtnRef = document.getElementById('attack-button');
+        if (attackBtnRef) attackBtnRef.disabled = true; // Désactiver action principale
+        const combatInvBtn = document.getElementById('combat-inventory-button');
+        if(combatInvBtn) combatInvBtn.classList.add('hidden');
+        const combatInvList = document.getElementById('combat-inventory-list');
+        if(combatInvList) combatInvList.classList.add('hidden'); // Cacher inventaire combat
+
 
         if (playerWon) {
-            // Gain d'XP et d'or
-            gainExperience(currentEnemy.xpValue);
-            player.gold += currentEnemy.goldValue;
-            logMessage(`Vous recevez ${currentEnemy.goldValue} pièces d'or.`);
-            updatePlayerStatsDisplay(); // Mettre à jour l'or et potentiellement l'XP/niveau
+            if (currentEnemy && player) {
+                // Gain d'XP et d'or
+                gainExperience(currentEnemy.xpValue);
+                player.gold += currentEnemy.goldValue;
+                logMessage(`Vous recevez ${currentEnemy.goldValue} pièces d'or.`);
+                updatePlayerStatsDisplay(); // Mettre à jour l'or et potentiellement l'XP/niveau
+            }
         } else {
             // Gérer la défaite du joueur (Game Over, retour au début, etc.)
             logMessage("Game Over !");
-            // Pour l'instant, on pourrait juste bloquer le jeu ou recharger.
-             alert("Vous avez été vaincu ! Rechargez la page pour réessayer."); // Solution temporaire
-             // Idéalement, implémenter une vraie logique de Game Over.
+            // La logique de Game Over est maintenant gérée dans main.js via le callback
         }
 
-        // Cacher l'interface de combat après un court délai (optionnel)
+        // Cacher l'interface de combat après un court délai
         setTimeout(() => {
-            combatDisplay.style.display = 'none';
+            if (combatDisplayElement) combatDisplayElement.classList.add('hidden');
         }, 1500); // Attend 1.5s avant de cacher
 
-        // Appeler le callback de fin de combat s'il existe
-        if (onCombatEndCallback) {
-            onCombatEndCallback(playerWon);
-            onCombatEndCallback = null; // Réinitialiser pour le prochain combat
-        }
+        // Très important: Réinitialiser l'état AVANT d'appeler le callback
+        const callback = onCombatEndCallback; // Copie locale
+        isCombatActive = false;
+        currentEnemy = null;
+        onCombatEndCallback = null;
 
-        currentEnemy = null; // Nettoyer l'ennemi actuel
+        // Appeler le callback de fin de combat s'il existe
+        if (callback) {
+            callback(playerWon); // Informe main.js du résultat
+        }
     }
 
+    /**
+     * Met à jour les HP du joueur (utilisé par InventoryManager).
+     * @param {number} newHp - La nouvelle valeur de HP.
+     */
+    function setPlayerHp(newHp) {
+         if(typeof player !== 'undefined' && player !== null) {
+             player.hp = Math.max(0, Math.min(player.maxHp, newHp));
+             updatePlayerStatsDisplay();
+         } else {
+              console.warn("setPlayerHp: Joueur non défini.");
+         }
+     }
+
+    /**
+      * Met à jour plusieurs statistiques du joueur (utilisé par ShopManager pour les upgrades).
+      * @param {object} newStats - Un objet contenant les stats à mettre à jour (ex: { attack: 12, defense: 6 }).
+      */
+     function setPlayerStats(newStats) {
+         if (typeof player !== 'undefined' && player !== null) {
+             Object.assign(player, newStats); // Fusionne les nouvelles stats
+             // Si maxHp est modifié, s'assurer que hp n'est pas supérieur
+             if (newStats.maxHp !== undefined && player.hp > player.maxHp) {
+                 player.hp = player.maxHp;
+             }
+             updatePlayerStatsDisplay();
+         } else {
+              console.warn("setPlayerStats: Joueur non défini.");
+         }
+     }
+
+
     // --- Gestionnaire d'événements ---
-    // Ajouter un listener unique au bouton d'attaque
-    attackButton.addEventListener('click', () => {
-        if (isCombatActive) {
-            playerAttack();
-        }
-    });
+    // Le listener pour le bouton d'attaque a été déplacé dans main.js
+
 
     // --- Interface Publique du Module ---
     return {
         startCombat: startCombat,
-        isCombatActive: () => isCombatActive, // Permet de savoir si un combat est en cours
-        getPlayerStats: () => ({ ...player }), // Retourne une copie des stats actuelles du joueur
-         // Exposer la fonction de mise à jour pour l'extérieur si nécessaire
-         updatePlayerStatsDisplay: updatePlayerStatsDisplay,
-         logMessage: logMessage, // Permettre à d'autres modules de logger
-         // Permettre de modifier le joueur de l'extérieur (par ex: équipement, potions)
-         setPlayerHp: (newHp) => {
-             if(player) player.hp = Math.max(0, Math.min(player.maxHp, newHp));
-             updatePlayerStatsDisplay();
-         },
-         setPlayerStats: (newStats) => {
-             if (player) {
-                 Object.assign(player, newStats); // Fusionne les nouvelles stats
-                 updatePlayerStatsDisplay();
+        isCombatActive: () => isCombatActive,
+        // Fonctions utilisées par main.js et/ou bossCombat.js:
+        playerAttack: playerAttack,         // Pour le listener centralisé
+        enemyAttack: enemyAttack,           // Pour la riposte après usage d'objet
+        gainExperience: gainExperience,     // Pour les gains d'XP (combat standard et boss)
+        logMessage: logMessage,             // Pour logger depuis d'autres modules
+        updatePlayerStatsDisplay: updatePlayerStatsDisplay, // Pour rafraîchir l'UI depuis ailleurs
+        // Fonctions utilisées par inventory.js ou shop.js:
+        setPlayerHp: setPlayerHp,           // Pour appliquer effets (potion)
+        setPlayerStats: setPlayerStats,     // Pour appliquer effets (upgrade boutique)
+        // Potentiellement retourner les stats joueur (copie) si nécessaire ailleurs
+        getPlayerStats: () => {
+             if (typeof player !== 'undefined' && player !== null) {
+                 return { ...player }; // Retourne une copie des stats actuelles
              }
-         }
+             return null; // Retourne null si player n'est pas défini
+        }
     };
 
 })(); // Fin de l'IIFE
-
-// Exemple d'utilisation (pourrait être dans un fichier main.js ou déclenché par un déplacement)
-/*
-function encounterEnemy() {
-    const floor = 1; // Ou récupérer l'étage actuel
-    const enemy = EnemyManager.generateRandomEnemy(floor);
-    if (enemy) {
-        CombatManager.startCombat(enemy, (playerWon) => {
-            console.log("Combat terminé. Le joueur a gagné :", playerWon);
-            if (playerWon) {
-                // Continuer l'exploration
-            } else {
-                // Gérer le game over
-            }
-        });
-    }
-}
-// Dans combat.js, modifier l'interface publique :
-return {
-    startCombat: startCombat,
-    isCombatActive: () => isCombatActive,
-    getPlayerStats: () => ({ ...player }),
-    updatePlayerStatsDisplay: updatePlayerStatsDisplay,
-    logMessage: logMessage,
-    setPlayerHp: setPlayerHp,
-    setPlayerStats: setPlayerStats,
-    playerAttack: playerAttack, // <-- Exposer cette fonction
-    gainExperience: gainExperience // <-- Exposer pour bossCombat
-    // Retirer l'addEventListener pour attackButton d'ici
-};
-
-// Simuler une rencontre
-// setTimeout(encounterEnemy, 2000); // Démarre un combat après 2 secondes
-*/
