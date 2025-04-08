@@ -78,3 +78,158 @@ button:hover {
     background-color: #4a2c0f; /* Brun très foncé */
     color: #e4d8c7; /* Texte parchemin */
 }
+/* Ajouter/Mettre à jour dans css/theme.css ou css/layout.css */
+
+/* --- Styles pour le Mode Construction --- */
+#building-list {
+    margin-top: 15px;
+    max-height: 450px; /* Ajuster si nécessaire */
+    overflow-y: auto;
+    padding: 5px;
+    border: 1px solid #a07e5f; /* Bordure parchemin */
+    background-color: rgba(253, 250, 243, 0.6); /* Fond parchemin très clair semi-transparent */
+    border-radius: 3px;
+}
+
+.building-option {
+    border: 1px solid #c1a88a; /* Bordure plus claire */
+    background-color: rgba(245, 241, 232, 0.8); /* Fond optionnel */
+    padding: 12px 15px;
+    margin-bottom: 12px;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    transition: background-color 0.2s ease;
+}
+.building-option:hover {
+    background-color: rgba(235, 231, 222, 0.9);
+}
+
+
+.building-option h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    color: #6b4f38; /* Brun bois */
+    font-family: 'MedievalSharp', cursive; /* Police thématique */
+    font-size: 1.15em;
+}
+
+.building-option p {
+    margin: 6px 0;
+    font-size: 0.9em;
+    color: #4a2c0f; /* Brun foncé texte */
+    line-height: 1.4;
+}
+.building-option p strong {
+    color: #5a3c1f; /* Brun un peu plus soutenu pour l'emphase */
+}
+
+.building-option button {
+    margin-top: 10px;
+    padding: 7px 14px;
+    font-size: 0.9em;
+    background-color: #8b6b4f; /* Bouton brun */
+    color: #f5f1e8;
+    border: 1px solid #4a2c0f;
+}
+.building-option button:hover:not(:disabled) {
+    background-color: #a07e5f;
+}
+
+.max-level-notice {
+    color: #228B22; /* Vert forêt */
+    font-weight: bold;
+}
+
+/* --- Styles pour le Mode Héros --- */
+#hero-capacity-display {
+    font-weight: bold;
+    color: #4a2c0f; /* Brun foncé */
+    margin-bottom: 15px;
+    font-size: 1.1em;
+    border-bottom: 1px dashed #a07e5f;
+    padding-bottom: 8px;
+}
+
+.recruitment-options {
+    margin-bottom: 20px;
+}
+.recruitment-options button {
+    margin-right: 10px;
+     margin-bottom: 5px; /* Pour mobile */
+}
+
+
+#hero-list-display h4 {
+     margin-bottom: 10px;
+     color: #6b4f38;
+}
+#hero-list-display ul {
+    margin-top: 5px;
+    padding-left: 20px; /* Indentation pour les puces */
+    list-style: none; /* On peut personnaliser les puces si on veut */
+}
+#hero-list-display li {
+    margin-bottom: 8px;
+    font-size: 0.95em;
+    padding: 4px;
+    border-bottom: 1px dotted #d2b48c; /* Séparateur léger */
+}
+#hero-list-display li:last-child {
+    border-bottom: none;
+}
+
+
+/* --- Styles Généraux / Utilitaires --- */
+
+/* Boutons désactivés */
+button:disabled {
+    background-color: #cccccc !important; /* Gris clair, important pour surcharger */
+    color: #666666 !important; /* Texte gris */
+    cursor: not-allowed !important;
+    border-color: #aaaaaa !important;
+     opacity: 0.7;
+     transform: none !important; /* Enlever effet hover */
+}
+button:disabled:hover {
+     /* S'assurer qu'il n'y a pas d'effet au survol */
+     box-shadow: none;
+}
+
+
+/* Styles pour le Journal des Événements */
+#event-list {
+     font-family: 'Courier New', Courier, monospace; /* Police pour log */
+     font-size: 0.85em;
+}
+#event-list li {
+    padding: 3px 5px;
+    border-bottom: 1px dotted #e4d8c7; /* Séparateur parchemin */
+}
+#event-list li:first-child {
+    background-color: rgba(255, 255, 180, 0.2); /* Léger highlight pour le dernier event */
+}
+
+.event-time {
+    color: #777;
+    margin-right: 5px;
+}
+.event-message {
+     /* Style par défaut pour le message */
+}
+
+/* Couleurs spécifiques aux types d'événements */
+#event-list li.event-info .event-message { color: #333; }
+#event-list li.event-warning .event-message { color: #b8860b; font-weight: bold; } /* DarkGoldenrod */
+#event-list li.event-error .event-message { color: #dc143c; font-weight: bold; } /* Crimson */
+#event-list li.event-success .event-message { color: #228b22; font-weight: bold;} /* ForestGreen */
+
+
+/* Message d'erreur dans l'UI principale si besoin */
+.error-message {
+    color: #dc143c; /* Crimson */
+    font-weight: bold;
+    background-color: rgba(255, 0, 0, 0.1);
+    border: 1px solid #dc143c;
+    padding: 10px;
+    border-radius: 4px;
+}
