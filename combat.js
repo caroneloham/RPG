@@ -301,6 +301,19 @@ function encounterEnemy() {
         });
     }
 }
+// Dans combat.js, modifier l'interface publique :
+return {
+    startCombat: startCombat,
+    isCombatActive: () => isCombatActive,
+    getPlayerStats: () => ({ ...player }),
+    updatePlayerStatsDisplay: updatePlayerStatsDisplay,
+    logMessage: logMessage,
+    setPlayerHp: setPlayerHp,
+    setPlayerStats: setPlayerStats,
+    playerAttack: playerAttack, // <-- Exposer cette fonction
+    gainExperience: gainExperience // <-- Exposer pour bossCombat
+    // Retirer l'addEventListener pour attackButton d'ici
+};
 
 // Simuler une rencontre
 // setTimeout(encounterEnemy, 2000); // Démarre un combat après 2 secondes
