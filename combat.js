@@ -1,16 +1,3 @@
-// combat.js
-/**
- * Module pour la gestion des combats standards contre les ennemis.
- * Gère le déroulement du combat tour par tour, les calculs de dégâts,
- * la gestion des HP, l'XP et la montée de niveau du joueur.
- */
-
-// Ce module dépend de l'objet 'player' qui doit être défini globalement
-// (par exemple, dans main.js : window.player = playerObject)
-// Il dépend aussi des éléments du DOM définis dans index.html.
-
-// --- PAS DE DÉCLARATION DE 'player' ICI ---
-// --- PAS DE DÉCLARATIONS DE CONSTANTES DOM ICI ---
 
 const CombatManager = (() => {
 
