@@ -44,7 +44,6 @@ const UI = {
         }
         if (missingElement) {
              console.error("Arrêt de l'initialisation de l'UI car des éléments clés sont manquants.");
-             // Optionnel : Afficher un message d'erreur à l'utilisateur dans le body
              document.body.innerHTML = "<h1>Erreur Critique</h1><p>Impossible d'initialiser l'interface du jeu. Veuillez vérifier la console (F12).</p>";
              return; // Arrêter l'exécution de init
         }
@@ -57,7 +56,6 @@ const UI = {
             // Le premier dessin sera fait par App.js après l'init de Simulation
         } else {
              console.warn("Le Canvas HTML5 n'est pas supporté par ce navigateur.");
-             // On pourrait désactiver les fonctionnalités liées au canvas ou afficher un message
              this.elements.gameCanvas.style.display = 'none'; // Cacher le canvas
         }
 
@@ -75,7 +73,6 @@ const UI = {
             this.updateResourceDisplay(Simulation.getResources());
         } else {
              console.warn("Simulation module not ready during UI init for initial resource display.");
-             // Afficher 0 partout par défaut si Simulation n'est pas prêt
              this.updateResourceDisplay({ wood: 0, stone: 0, gold: 0, mana: 0 });
         }
 
@@ -84,33 +81,26 @@ const UI = {
 
     // Met à jour l'affichage des 4 ressources principales
     updateResourceDisplay: function(resources) {
-        // Vérifier si les éléments existent (sécurité post-init)
         if (!this.elements.resourceWood || !this.elements.resourceStone || !this.elements.resourceGold || !this.elements.resourceMana) {
-            // console.warn("UI elements for resources not available for update.");
             return;
         }
         this.elements.resourceWood.textContent = Math.floor(resources.wood);
         this.elements.resourceStone.textContent = Math.floor(resources.stone);
-        this.elements.resourceGold.textContent = resources.gold.toFixed(2); // Garde 2 décimales
-        this.elements.resourceMana.textContent = resources.mana.toFixed(2); // Garde 2 décimales
+        this.elements.resourceGold.textContent = resources.gold.toFixed(2);
+        this.elements.resourceMana.textContent = resources.mana.toFixed(2);
     },
 
     // --- Gestion du Mode Construction ---
     enterBuildMode: function() {
         console.log("Entering Build Mode...");
         this.activeMode = 'build';
-        // Vider les références spécifiques aux autres modes
         this.elements.heroListDisplay = null;
         this.elements.heroCapacityDisplay = null;
-        this.updateBuildModeUI(); // Appelle la fonction dédiée à la mise à jour de ce mode
+        this.updateBuildModeUI();
     },
 
-    // Met à jour le contenu de la zone #mode-content-area pour le mode construction
     updateBuildModeUI: function() {
-        // Ne fait rien si on n'est pas censé être en mode construction
         if (this.activeMode !== 'build' || !this.elements.modeContentArea) return;
-
-        // Vérifier si BuildingTypes est disponible
         if (typeof BuildingTypes === 'undefined') {
              this.elements.modeContentArea.innerHTML = '<h3>Erreur</h3><p>Les définitions des bâtiments n\'ont pas pu être chargées.</p>';
              console.error("BuildingTypes non défini lors de la mise à jour de l'UI Build Mode.");
@@ -121,81 +111,66 @@ const UI = {
                        <p>Construisez de nouveaux bâtiments (achat unique) ou améliorez ceux existants.</p>
                        <div id="building-list">`;
 
-        const constructedData = Simulation.getConstructedBuildingsData(); // Récupère les données à jour
+        const constructedData = Simulation.getConstructedBuildingsData();
         const constructedIds = constructedData.map(b => b.typeId);
 
-        // Boucle sur TOUS les types de bâtiments définis dans BuildingTypes
+        const formatCost = (costObject) => {
+            if (!costObject) return "N/A";
+            return Object.entries(costObject)
+                         .map(([res, val]) => `${val} ${res.charAt(0).toUpperCase() + res.slice(1)}`)
+                         .join(', ');
+        };
+
         for (const typeId in BuildingTypes) {
             const type = BuildingTypes[typeId];
             const isBuilt = constructedIds.includes(typeId);
             const buildingInstanceData = isBuilt ? constructedData.find(b => b.typeId === typeId) : null;
-
-            // Formatter le coût pour affichage lisible
-            const formatCost = (costObject) => {
-                if (!costObject) return "N/A";
-                return Object.entries(costObject)
-                             .map(([res, val]) => `${val} ${res.charAt(0).toUpperCase() + res.slice(1)}`)
-                             .join(', ');
-            };
 
             content += `<div class="building-option">
                            <h4>${type.name} ${isBuilt ? `(Niveau ${buildingInstanceData.level}/${type.maxLevel})` : ''}</h4>
                            <p>${type.description}</p>`;
 
             if (isBuilt) {
-                // Si le bâtiment est construit
                 if (buildingInstanceData.level < type.maxLevel) {
-                    // Et qu'il peut être amélioré
-                    const upgradeCost = buildingInstanceData.upgradeCost; // Coût calculé par getConstructedBuildingsData
+                    const upgradeCost = buildingInstanceData.upgradeCost;
                     const costString = formatCost(upgradeCost);
                     content += `<p><strong>Coût Amélio. (Nv ${buildingInstanceData.level + 1}):</strong> ${costString}</p>
                                 <button class="btn-upgrade" data-building-id="${typeId}">Améliorer</button>`;
                 } else {
-                    // Si au niveau maximum
                     content += `<p><strong class="max-level-notice">Niveau Maximum Atteint</strong></p>`;
                 }
             } else {
-                // Si le bâtiment n'est pas construit
-                const buildCost = Simulation.calculateCost(type, 0); // Coût pour niveau 1 (level 0)
+                const buildCost = Simulation.calculateCost(type, 0);
                 const costString = formatCost(buildCost);
                 content += `<p><strong>Coût Construction:</strong> ${costString}</p>
                             <button class="btn-build" data-building-id="${typeId}">Construire</button>`;
             }
-            content += `</div>`; // Fin de .building-option
+            content += `</div>`;
         }
 
-        content += `</div>`; // Fin de #building-list
+        content += `</div>`;
         this.elements.modeContentArea.innerHTML = content;
-
-        // Rattacher les écouteurs d'événements aux nouveaux boutons créés
         this.attachBuildModeListeners();
     },
 
-    // Attache les listeners pour les boutons Construire/Améliorer
     attachBuildModeListeners: function() {
          this.elements.modeContentArea.querySelectorAll('.btn-build').forEach(button => {
-            // Supprimer l'ancien listener s'il existe pour éviter les doublons (bonne pratique)
-            button.replaceWith(button.cloneNode(true)); // Crée un clone sans listeners
+            button.replaceWith(button.cloneNode(true));
         });
          this.elements.modeContentArea.querySelectorAll('.btn-upgrade').forEach(button => {
             button.replaceWith(button.cloneNode(true));
         });
 
-         // Ajouter les nouveaux listeners aux clones
          this.elements.modeContentArea.querySelectorAll('.btn-build').forEach(button => {
             button.addEventListener('click', (e) => {
                 const id = e.target.dataset.buildingId;
-                console.log(`Click Construire: ${id}`);
                 Simulation.buildBuilding(id);
-                // L'UI est mise à jour DANS buildBuilding s'il réussit (via recalculate -> updateBuildModeUI)
             });
         });
         this.elements.modeContentArea.querySelectorAll('.btn-upgrade').forEach(button => {
              button.addEventListener('click', (e) => {
                 const id = e.target.dataset.buildingId;
-                 console.log(`Click Améliorer: ${id}`);
                 Simulation.upgradeBuilding(id);
-                 // L'UI est mise à jour DANS upgradeBuilding s'il réussit (via recalculate -> updateBuildModeUI)
             });
         });
     },
@@ -204,7 +179,6 @@ const UI = {
     enterHeroMode: function() {
         console.log("Entering Hero Management Mode...");
         this.activeMode = 'hero';
-        // Générer la structure HTML de base pour ce mode
         this.elements.modeContentArea.innerHTML = `
             <h3>Gestion des Héros</h3>
             <p id="hero-capacity-display">Capacité: ... / ...</p>
@@ -212,142 +186,104 @@ const UI = {
             <div class="recruitment-options">
                 <button id="recruit-warrior-btn" disabled title="Nécessite une Caserne.">Recruter Guerrier (Coût: 50 Or, 10 Bois)</button>
                 <button id="recruit-mage-btn" disabled title="Nécessite une Tour de Mage.">Recruter Mage (Coût: 70 Or, 20 Mana)</button>
-                <!-- Ajouter d'autres options de recrutement ici -->
             </div>
             <div id="hero-list-display">
                 <h4>Héros Actuels :</h4>
                 <ul><li>Chargement de la liste des héros...</li></ul>
             </div>
         `;
-        // Récupérer les références aux éléments spécifiques à ce mode
         this.elements.heroListDisplay = this.elements.modeContentArea.querySelector('#hero-list-display ul');
         this.elements.heroCapacityDisplay = this.elements.modeContentArea.querySelector('#hero-capacity-display');
 
-        // Vérifier si les éléments ont bien été trouvés
         if (!this.elements.heroListDisplay || !this.elements.heroCapacityDisplay) {
             console.error("Erreur UI Hero Mode: Impossible de trouver #hero-list-display ul ou #hero-capacity-display.");
             this.elements.modeContentArea.innerHTML += "<p class='error-message'>Erreur lors de l'affichage des détails des héros.</p>";
             return;
         }
 
-        // Mettre à jour immédiatement l'affichage avec les données actuelles
-        this.updateHeroList(Heroes.getHeroes()); // Met à jour la liste <ul>
-        this.updateHeroCapacity(Simulation.stats.maxHeroCapacity); // Met à jour le texte capacité X/Y
-        // this.checkRecruitmentAvailability(); // Est appelé par updateHeroList et updateHeroCapacity
-
-        // Attacher les écouteurs aux boutons de recrutement
+        this.updateHeroList(Heroes.getHeroes());
+        this.updateHeroCapacity(Simulation.stats.maxHeroCapacity);
         this.attachHeroModeListeners();
     },
 
-    // Met à jour la liste <ul> des héros dans l'interface
     updateHeroList: function(heroes) {
-        // Vérifie si l'élément existe (on doit être en mode héros)
         if (this.activeMode !== 'hero' || !this.elements.heroListDisplay) {
-            // console.warn("Tentative de mise à jour de la liste des héros hors du mode héros.");
             return;
         }
 
-        this.elements.heroListDisplay.innerHTML = ''; // Vide la liste précédente
+        this.elements.heroListDisplay.innerHTML = ''; // Vide la liste
         if (heroes.length === 0) {
             this.elements.heroListDisplay.innerHTML = '<li>Aucun héros n\'a été recruté pour le moment.</li>';
         } else {
             heroes.forEach(hero => {
                 const li = document.createElement('li');
                 li.textContent = `ID: ${hero.id} | ${hero.name} (${hero.role}) - Nv. ${hero.level} (XP: ${hero.xp})`;
-                // TODO: Ajouter des boutons d'action par héros (assigner, détails, etc.)
                 this.elements.heroListDisplay.appendChild(li);
             });
         }
-        // Après avoir mis à jour la liste (et donc potentiellement le nombre actuel), vérifier la dispo du recrutement
         this.checkRecruitmentAvailability();
     },
 
-    // Met à jour le texte affichant la capacité actuelle / maximale des héros
     updateHeroCapacity: function(maxCapacity) {
-        // Vérifie si l'élément existe (on doit être en mode héros)
        if (this.activeMode !== 'hero' || !this.elements.heroCapacityDisplay) {
-           // console.warn("Tentative de mise à jour de la capacité héros hors du mode héros.");
            return;
        }
-
-        const currentHeroes = Heroes.getHeroes().length; // Récupère le nombre actuel
+        const currentHeroes = Heroes.getHeroes().length;
         this.elements.heroCapacityDisplay.textContent = `Capacité Héros: ${currentHeroes} / ${maxCapacity}`;
-
-        // Après avoir mis à jour la capacité max (qui peut changer avec les bâtiments), vérifier la dispo du recrutement
         this.checkRecruitmentAvailability();
     },
 
-    // Vérifie les conditions (bâtiments requis, capacité) pour activer/désactiver les boutons de recrutement
     checkRecruitmentAvailability: function() {
-        if (this.activeMode !== 'hero') return; // Seulement en mode héros
+        if (this.activeMode !== 'hero') return;
 
         const currentHeroes = Heroes.getHeroes().length;
         const maxCapacity = Simulation.stats.maxHeroCapacity;
         const canRecruitMore = currentHeroes < maxCapacity;
 
-        const builtBuildings = Simulation.getConstructedBuildingsData(); // Donne un tableau d'objets bâtiment
+        const builtBuildings = Simulation.getConstructedBuildingsData();
         const hasBarracks = builtBuildings.some(b => b.typeId === 'caserne' && b.level > 0);
         const hasMageTower = builtBuildings.some(b => b.typeId === 'tour_mage' && b.level > 0);
-        // Ajouter ici les vérifications pour d'autres types de héros si nécessaire
 
         const warriorBtn = document.getElementById('recruit-warrior-btn');
         const mageBtn = document.getElementById('recruit-mage-btn');
 
-        // Activer/Désactiver le bouton Guerrier
         if (warriorBtn) {
             if (canRecruitMore && hasBarracks) {
                 warriorBtn.disabled = false;
-                warriorBtn.title = "Recruter un Guerrier"; // Tooltip normal
+                warriorBtn.title = "Recruter un Guerrier";
             } else {
                 warriorBtn.disabled = true;
-                if (!hasBarracks) {
-                    warriorBtn.title = "Nécessite une Caserne (Niveau 1 ou plus).";
-                } else if (!canRecruitMore) {
-                    warriorBtn.title = "Capacité maximale de héros atteinte.";
-                } else {
-                     warriorBtn.title = "Recrutement impossible pour le moment."; // Générique
-                }
+                warriorBtn.title = !hasBarracks ? "Nécessite une Caserne (Niveau 1+)." : (!canRecruitMore ? "Capacité maximale de héros atteinte." : "Recrutement impossible.");
             }
         }
 
-        // Activer/Désactiver le bouton Mage
         if (mageBtn) {
             if (canRecruitMore && hasMageTower) {
                 mageBtn.disabled = false;
                 mageBtn.title = "Recruter un Mage";
             } else {
                 mageBtn.disabled = true;
-                 if (!hasMageTower) {
-                    mageBtn.title = "Nécessite une Tour de Mage (Niveau 1 ou plus).";
-                } else if (!canRecruitMore) {
-                    mageBtn.title = "Capacité maximale de héros atteinte.";
-                } else {
-                     mageBtn.title = "Recrutement impossible pour le moment.";
-                }
+                 mageBtn.title = !hasMageTower ? "Nécessite une Tour de Mage (Niveau 1+)." : (!canRecruitMore ? "Capacité maximale de héros atteinte." : "Recrutement impossible.");
             }
         }
     },
 
-    // Attache les listeners pour les boutons de recrutement
      attachHeroModeListeners: function() {
         const warriorBtn = document.getElementById('recruit-warrior-btn');
         const mageBtn = document.getElementById('recruit-mage-btn');
 
         if (warriorBtn) {
-             // Remplacer pour éviter double listener
             const newWarriorBtn = warriorBtn.cloneNode(true);
             warriorBtn.parentNode.replaceChild(newWarriorBtn, warriorBtn);
             newWarriorBtn.addEventListener('click', () => {
-                console.log("Click Recruter Guerrier");
-                // Vérifier à nouveau juste avant l'action (sécurité)
                 if (Heroes.getHeroes().length < Simulation.stats.maxHeroCapacity && Simulation.getConstructedBuildingsData().some(b => b.typeId === 'caserne')) {
-                    const cost = { gold: 50, wood: 10 }; // Coût spécifique au guerrier
+                    const cost = { gold: 50, wood: 10 };
                     if (Simulation.spendResources(cost)) {
-                        Heroes.recruitNewHero("Guerrier Recrue", "Guerrier"); // Nom exemple
-                    } // Message d'erreur géré par spendResources si échec
+                        Heroes.recruitNewHero("Guerrier Recrue", "Guerrier");
+                    }
                 } else {
                      this.displayMessage("Conditions de recrutement non remplies (capacité ou bâtiment).", "warning");
-                     this.checkRecruitmentAvailability(); // Re-vérifier pour màj le bouton si état a changé
+                     this.checkRecruitmentAvailability();
                 }
             });
         }
@@ -356,11 +292,10 @@ const UI = {
               const newMageBtn = mageBtn.cloneNode(true);
               mageBtn.parentNode.replaceChild(newMageBtn, mageBtn);
               newMageBtn.addEventListener('click', () => {
-                console.log("Click Recruter Mage");
                  if (Heroes.getHeroes().length < Simulation.stats.maxHeroCapacity && Simulation.getConstructedBuildingsData().some(b => b.typeId === 'tour_mage')) {
-                    const cost = { gold: 70, mana: 20 }; // Coût spécifique au mage
+                    const cost = { gold: 70, mana: 20 };
                      if (Simulation.spendResources(cost)) {
-                        Heroes.recruitNewHero("Mage Apprenti", "Mage"); // Nom exemple
+                        Heroes.recruitNewHero("Mage Apprenti", "Mage");
                     }
                 } else {
                      this.displayMessage("Conditions de recrutement non remplies (capacité ou bâtiment).", "warning");
@@ -374,10 +309,8 @@ const UI = {
     enterEventMode: function() {
         console.log("Entering Event Management Mode...");
         this.activeMode = 'event';
-         // Vider les références spécifiques aux autres modes
         this.elements.heroListDisplay = null;
         this.elements.heroCapacityDisplay = null;
-        // Afficher le contenu et les boutons pour ce mode
         this.elements.modeContentArea.innerHTML = `
             <h3>Gestion des Événements</h3>
             <p>Les événements aléatoires impactent votre royaume. Vous pouvez aussi en déclencher certains manuellement ici pour tester.</p>
@@ -385,11 +318,9 @@ const UI = {
             <button id="trigger-blessing-btn">Déclencher Bénédiction Sylvestre (Test)</button>
              <button id="trigger-disaster-btn">Déclencher Tempête (Test)</button>
         `;
-        // Attacher les listeners
         this.attachEventModeListeners();
     },
 
-    // Attache les listeners pour les boutons du mode événement
     attachEventModeListeners: function() {
          const randomBtn = document.getElementById('trigger-random-event-btn');
          const blessingBtn = document.getElementById('trigger-blessing-btn');
@@ -413,43 +344,22 @@ const UI = {
     },
 
     // --- Fonctions Utilitaires UI ---
-
-    // Ajoute une entrée dans le journal des événements en haut de la liste
-    logEvent: function(message, type = 'info') { // types: 'info', 'warning', 'error', 'success'
+    logEvent: function(message, type = 'info') {
          if (!this.elements.eventLogList) return;
-
          const li = document.createElement('li');
-         // Formatage simple de l'heure
          const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-         li.innerHTML = `<span class="event-time">[${time}]</span> <span class="event-message">${message}</span>`; // Utiliser innerHTML pour les spans
-         li.classList.add(`event-${type}`); // Classe CSS pour le style (ex: couleur)
-
-         // Insérer au début de la liste <ul>
+         li.innerHTML = `<span class="event-time">[${time}]</span> <span class="event-message">${message}</span>`;
+         li.classList.add(`event-${type}`);
          this.elements.eventLogList.prepend(li);
-
-         // Limiter le nombre d'entrées pour éviter de surcharger le DOM
-         while (this.elements.eventLogList.children.length > 30) { // Garde les 30 dernières entrées
+         while (this.elements.eventLogList.children.length > 30) {
              this.elements.eventLogList.removeChild(this.elements.eventLogList.lastChild);
          }
     },
 
-    // Affiche un message à l'utilisateur (actuellement via logEvent, pourrait être une notification)
     displayMessage: function(message, type = 'info') {
-        // Pour l'instant, on logue dans la console ET dans le journal des événements
         console.log(`[MSG-${type.toUpperCase()}]: ${message}`);
         this.logEvent(message, type);
-
-        // TODO: Implémenter un système de notifications "Toast" ou similaire pour plus de visibilité
-        // Exemple simple (nécessiterait CSS pour le style et positionnement):
-        /*
-        const notification = document.createElement('div');
-        notification.className = `game-notification notification-${type}`;
-        notification.textContent = message;
-        document.body.appendChild(notification);
-        setTimeout(() => {
-            notification.remove();
-        }, 3000); // Disparaît après 3 secondes
-        */
+        // Future amélioration: notification toast
     },
 
     // --- Dessin sur le Canvas ---
@@ -457,7 +367,6 @@ const UI = {
     // Fonction principale pour dessiner tout l'état du jeu sur le canvas
     drawGame: function() {
         if (!this.elements.canvasContext) {
-            // console.warn("Tentative de dessin sans contexte canvas.");
             return;
         }
         const ctx = this.elements.canvasContext;
@@ -466,45 +375,117 @@ const UI = {
         // 1. Nettoyer complètement le canvas avant de redessiner
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 2. Dessiner le fond (peut devenir une image ou une grille plus tard)
-        ctx.fillStyle = '#c2b280'; // Couleur terre/sable un peu plus foncée
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-         // Optionnel : Dessiner une grille légère
-         this.drawGrid(ctx, canvas.width, canvas.height, 50); // Grille de 50x50 pixels
+        // ************************************************
+        // ********** NOUVELLE PARTIE : DESSIN DU FOND MAP **********
+        // ************************************************
+        this.drawMapBackground(ctx, canvas.width, canvas.height);
 
-        // 3. Dessiner les bâtiments construits
+
+        // 3. Dessiner la grille (Optionnel, peut être désactivé si trop chargé)
+        // Mettre une grille plus légère et peut-être pas sur toute la map
+        this.drawGrid(ctx, canvas.width, canvas.height, 50, 'rgba(0, 0, 0, 0.08)'); // Grille plus discrète
+
+        // 4. Dessiner les bâtiments construits PAR-DESSUS le fond et la grille
         this.drawBuildings(ctx);
 
-        // 4. Dessiner les héros (sera implémenté plus tard)
+        // 5. Dessiner les héros (futur)
         // this.drawHeroes(ctx);
 
-        // 5. Dessiner d'autres éléments UI sur le canvas si nécessaire (ex: zone sélectionnée)
+        // 6. Dessiner d'autres éléments UI sur le canvas si nécessaire
     },
 
-    // Dessine une grille sur le canvas (fonction utilitaire)
-    drawGrid: function(ctx, width, height, gridSize) {
+    // NOUVELLE FONCTION : Dessine un fond de carte stylisé
+    drawMapBackground: function(ctx, width, height) {
+        // Zone principale (Plaines vertes)
+        ctx.fillStyle = '#8FBC8F'; // DarkSeaGreen (couleur de base pour les plaines)
+        ctx.fillRect(0, 0, width, height);
+
+        // Zone d'eau (ex: un lac ou une rivière dans un coin)
+        ctx.fillStyle = '#6495ED'; // CornflowerBlue
         ctx.beginPath();
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)'; // Couleur gris très léger
-        ctx.lineWidth = 0.5;
+        ctx.moveTo(width * 0.7, 0); // Coin supérieur droit
+        ctx.lineTo(width, 0);
+        ctx.lineTo(width, height * 0.4);
+        ctx.quadraticCurveTo(width * 0.85, height * 0.45, width * 0.65, height * 0.3); // Courbe pour le bord du lac
+        ctx.closePath();
+        ctx.fill();
+
+        // Zone de forêt (ex: une bande sur le côté gauche)
+        ctx.fillStyle = '#228B22'; // ForestGreen
+        ctx.fillRect(0, 0, width * 0.15, height); // Bande verticale à gauche
+         // Ajouter quelques "arbres" stylisés (cercles) pour la texture
+         ctx.fillStyle = '#006400'; // DarkGreen
+         for(let i=0; i<15; i++) {
+             const treeX = Math.random() * (width * 0.14);
+             const treeY = Math.random() * height;
+             const treeRadius = Math.random() * 5 + 3; // Rayon entre 3 et 8
+             ctx.beginPath();
+             ctx.arc(treeX, treeY, treeRadius, 0, Math.PI * 2);
+             ctx.fill();
+         }
+
+
+        // Zone de collines/montagnes (ex: en bas)
+        ctx.fillStyle = '#A0522D'; // Sienna (couleur de base collines)
+        ctx.beginPath();
+        ctx.moveTo(0, height * 0.8);
+        // Dessiner une ligne brisée pour simuler des collines
+        ctx.lineTo(width * 0.1, height * 0.75);
+        ctx.lineTo(width * 0.25, height * 0.85);
+        ctx.lineTo(width * 0.4, height * 0.7);
+        ctx.lineTo(width * 0.6, height * 0.9);
+        ctx.lineTo(width * 0.75, height * 0.75);
+        ctx.lineTo(width * 0.9, height * 0.85);
+        ctx.lineTo(width, height * 0.8);
+        // Remplir la zone sous la ligne jusqu'en bas
+        ctx.lineTo(width, height);
+        ctx.lineTo(0, height);
+        ctx.closePath();
+        ctx.fill();
+         // Ajouter quelques pics montagneux stylisés (triangles gris)
+         ctx.fillStyle = '#696969'; // DimGray
+         const peaks = [ [0.2, 0.8], [0.5, 0.75], [0.8, 0.82] ]; // Positions relatives x, y (haut du triangle)
+         peaks.forEach(p => {
+             const peakX = width * p[0];
+             const peakY = height * p[1];
+             const baseWidth = width * 0.08;
+             ctx.beginPath();
+             ctx.moveTo(peakX - baseWidth/2, height * 0.9); // Base gauche
+             ctx.lineTo(peakX, peakY); // Sommet
+             ctx.lineTo(peakX + baseWidth/2, height * 0.9); // Base droite
+             ctx.closePath();
+             ctx.fill();
+         });
+
+        // Ajouter une texture légère ou un dégradé pourrait améliorer encore, mais restons simple pour l'instant.
+         console.log("Map background drawn with terrain zones.");
+    },
+
+
+    // Dessine une grille sur le canvas (fonction utilitaire)
+    drawGrid: function(ctx, width, height, gridSize, gridColor = 'rgba(0, 0, 0, 0.1)') {
+        ctx.beginPath();
+        ctx.strokeStyle = gridColor; // Utilise la couleur passée en paramètre
+        ctx.lineWidth = 0.5; // Ligne très fine
 
         for (let x = gridSize; x < width; x += gridSize) {
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, height);
+            ctx.moveTo(x + 0.5, 0); // +0.5 pour des lignes plus nettes sur certains rendus
+            ctx.lineTo(x + 0.5, height);
         }
         for (let y = gridSize; y < height; y += gridSize) {
-            ctx.moveTo(0, y);
-            ctx.lineTo(width, y);
+            ctx.moveTo(0, y + 0.5);
+            ctx.lineTo(width, y + 0.5);
         }
         ctx.stroke();
-         ctx.lineWidth = 1; // Remettre la valeur par défaut
+         ctx.lineWidth = 1; // Remettre la valeur par défaut pour les autres dessins
     },
 
 
     // Dessine les bâtiments sur le canvas
     drawBuildings: function(ctx) {
-        const buildings = Simulation.getConstructedBuildingsData(); // Récupère les données à jour
-        const baseBuildingSize = 35; // Taille de base
-        const sizeIncreasePerLevel = 2; // Augmente légèrement la taille par niveau
+        const buildings = Simulation.getConstructedBuildingsData();
+        const baseBuildingSize = 35;
+        const sizeIncreasePerLevel = 2;
 
         buildings.forEach(building => {
             const level = building.level;
@@ -513,37 +494,47 @@ const UI = {
             const y = building.position.y; // Centre Y
             const halfSize = buildingSize / 2;
 
-            // Dessiner la forme du bâtiment (carré avec bordure)
-            ctx.fillStyle = building.color || '#CCCCCC'; // Utilise la couleur définie ou gris
+            // Appliquer une ombre légère aux bâtiments pour les détacher du fond
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+            ctx.shadowBlur = 5;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+
+            // Dessiner la forme du bâtiment
+            ctx.fillStyle = building.color || '#CCCCCC';
             ctx.fillRect(x - halfSize, y - halfSize, buildingSize, buildingSize);
 
-            ctx.strokeStyle = '#333333'; // Bordure noire
-            ctx.lineWidth = (level > 3) ? 2 : 1; // Bordure plus épaisse pour haut niveau
+            // Dessiner la bordure
+            ctx.strokeStyle = '#333333';
+            ctx.lineWidth = (level > 3) ? 1.5 : 1; // Bordure légèrement plus épaisse pour haut niveau
             ctx.strokeRect(x - halfSize, y - halfSize, buildingSize, buildingSize);
-             ctx.lineWidth = 1; // Réinitialiser
 
-            // Afficher le niveau du bâtiment au centre
-            ctx.fillStyle = '#FFFFFF'; // Texte blanc pour contraste
-             ctx.shadowColor = 'black'; // Ombre pour lisibilité
-             ctx.shadowBlur = 2;
-            ctx.font = `bold ${10 + level}px Arial`; // Taille de police augmente avec niveau
+            // Réinitialiser l'ombre avant de dessiner le texte
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+             ctx.lineWidth = 1; // Réinitialiser la largeur de ligne
+
+            // Afficher le niveau du bâtiment (avec une petite ombre de texte pour lisibilité)
+            ctx.fillStyle = '#FFFFFF';
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle'; // Aligner verticalement au centre
+            ctx.textBaseline = 'middle';
+            ctx.font = `bold ${10 + level}px Arial`;
+             // Petite ombre portée pour le texte
+             ctx.shadowColor = 'black';
+             ctx.shadowBlur = 1;
+             ctx.shadowOffsetX = 1;
+             ctx.shadowOffsetY = 1;
             ctx.fillText(`Lv${level}`, x, y);
-
-             // Réinitialiser l'ombre
+            // Réinitialiser l'ombre du texte
              ctx.shadowColor = 'transparent';
              ctx.shadowBlur = 0;
+             ctx.shadowOffsetX = 0;
+             ctx.shadowOffsetY = 0;
 
-            // TODO: Ajouter une indication visuelle si améliorable ? Ou au survol ?
         });
+        console.log(`${buildings.length} buildings drawn on canvas.`);
     },
 
-    // Fonction pour gérer les animations du canvas (si nécessaire plus tard)
-    // animateCanvas: function(timestamp) {
-    //     // Mettre à jour les positions, états des animations...
-    //     this.drawGame(); // Redessiner l'état mis à jour
-    //     // Demander la prochaine frame
-    //     requestAnimationFrame(this.animateCanvas.bind(this));
-    // }
-};
+}; // Fin de l'objet UI
