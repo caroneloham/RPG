@@ -167,3 +167,65 @@ button:active {
 .hidden {
     display: none !important; /* !important pour forcer la priorité sur les styles inline */
 }
+/* style.css */
+
+/* ... (autres styles : body, game-container, h1, h2, etc.) ... */
+
+
+/* --- Zone d'affichage du donjon/carte --- */
+#map-display {
+    grid-area: map;             /* Positionne cet élément dans la zone 'map' de la grille CSS */
+    background-color: #111;     /* Fond très sombre pour contraster avec les tuiles */
+    border: 1px solid #555;     /* Bordure pour délimiter la zone */
+    padding: 10px;              /* Espace intérieur entre la bordure et le contenu */
+
+    /* --- Styles Cruciaux pour la Grille Textuelle --- */
+    font-family: 'Courier New', Courier, monospace; /* **ESSENTIEL**: Police à chasse fixe (monospace) pour que tous les caractères aient la même largeur et que la grille s'aligne correctement. */
+    white-space: pre;           /* **ESSENTIEL**: Préserve les espaces multiples et les sauts de ligne générés par JavaScript. Sans cela, la grille s'afficherait sur une seule ligne ou avec des espaces incorrects. */
+    font-size: 1em;            /* Taille de la police pour les caractères de la carte. Ajustez (ex: 0.9em, 1.1em) selon vos préférences et la taille de la carte. */
+    line-height: 1.0;           /* Espace vertical entre les lignes. Une valeur proche de 1 rend la grille plus compacte. Ajustez (ex: 1.1, 1.2) si les caractères se touchent verticalement. */
+    color: #bbb;                /* Couleur par défaut des tuiles (murs, sol, etc.). */
+
+    /* --- Gestion du Débordement (Scrolling) --- */
+    overflow: auto;             /* **IMPORTANT**: Ajoute automatiquement des barres de défilement (horizontales et/ou verticales) SI le contenu de la carte (la grille générée) est plus grand que la zone allouée à #map-display. */
+
+    /* --- Dimensions (Optionnel mais recommandé) --- */
+    min-height: 300px;          /* Hauteur minimale pour que la zone ne soit pas trop petite si la carte est petite. */
+    /* max-height: 70vh; */    /* Optionnel: Hauteur maximale (exprimée en % de la hauteur de la fenêtre) pour éviter que la carte ne prenne trop de place sur de grands écrans. */
+    /* min-width / max-width peuvent aussi être utiles si nécessaire */
+
+    /* --- Améliorations Visuelles Optionnelles --- */
+    /* text-align: center; */   /* Si vous voulez centrer la carte horizontalement DANS la zone #map-display (fonctionne bien avec 'white-space: pre') */
+    /* letter-spacing: 1px; */ /* Ajoute de l'espace horizontal entre les caractères (peut aider à la lisibilité ou nuire à la compacité) */
+    /* user-select: none; */   /* Empêche l'utilisateur de sélectionner accidentellement le texte de la carte. Peut être utile, mais peut gêner le débogage. */
+    cursor: default;            /* Curseur par défaut pour indiquer que la zone n'est pas directement cliquable (sauf si vous ajoutez des interactions). */
+}
+
+
+/* --- Styles spécifiques pour les éléments de la carte (Optionnel) --- */
+/* Vous POURRIEZ ajouter des styles spécifiques si votre JS enveloppe
+   chaque caractère dans un <span> avec une classe, par exemple :
+   <span class="tile-player">@</span>
+   <span class="tile-wall">#</span>
+*/
+/*
+#map-display .tile-player {
+    color: yellow;
+    font-weight: bold;
+}
+#map-display .tile-enemy {
+    color: red;
+    font-weight: bold;
+}
+#map-display .tile-stairs {
+    color: cyan;
+}
+#map-display .tile-floor {
+    color: #666; /* Sol plus sombre */
+/* } */
+/* Note : Appliquer des classes aux tuiles individuelles augmente la complexité du JS
+   et peut avoir un impact sur les performances pour de très grandes cartes.
+   Pour commencer, un affichage simple avec une couleur unique est suffisant. */
+
+
+/* ... (autres styles : player-stats, game-log, combat-display, etc.) ... */
