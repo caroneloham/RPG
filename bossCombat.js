@@ -314,3 +314,11 @@ if (currentFloor % 5 === 0) {
     }
 }
 */
+// Dans bossCombat.js, modifier l'interface publique :
+return {
+    startBossCombat: startBossCombat,
+    isBossCombatActive: () => isBossCombatActive,
+    playerAttackBoss: playerAttackBoss, // <-- Exposer cette fonction
+    generateBoss: generateBoss
+    // Pas de listener à gérer ici
+};
