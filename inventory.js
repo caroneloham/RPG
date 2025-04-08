@@ -290,3 +290,15 @@ const InventoryManager = (() => {
 // InventoryManager.addItem({ id: 'potion_heal_1', name: "Potion de Soins Mineure", effect: { action: 'heal', amount: 25 } }); // Ajoute une deuxième
 // InventoryManager.addItem({ id: 'key_1', name: "Clé rouillée", effect: { action: 'passive', description: 'Ouvre une porte.' } });
 // InventoryManager.openInventory();
+// Dans inventory.js, modifier l'interface publique :
+ return {
+    addItem: addItem,
+    removeItem: removeItem,
+    useItem: useItem, // Déjà exposé
+    applyItemEffect: applyItemEffect, // <-- Exposer pour utilisation en combat
+    getInventory: () => [...playerInventory],
+    displayInventory: displayInventory,
+    openInventory: openInventory,
+    closeInventory: closeInventory,
+    isInventoryOpen: () => isInventoryOpen,
+};
