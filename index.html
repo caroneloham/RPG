@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorateur de Donjon Procédural</title>
+    <!-- Liaison vers la feuille de style CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Conteneur principal pour l'ensemble du jeu -->
+    <div id="game-container">
+        <h1>Explorateur de Donjon</h1>
+
+        <!-- Zone d'affichage du donjon/carte -->
+        <div id="map-display">
+            <!-- Le rendu du donjon apparaîtra ici -->
+            <p>Chargement du donjon...</p>
+        </div>
+
+        <!-- Zone d'affichage des statistiques du joueur -->
+        <div id="player-stats">
+            <h2>Statistiques du Joueur</h2>
+            <p>Niveau: <span id="player-level">1</span></p>
+            <p>HP: <span id="player-hp">100</span> / <span id="player-max-hp">100</span></p>
+            <p>Attaque: <span id="player-attack">10</span></p>
+            <p>Défense: <span id="player-defense">5</span></p>
+            <p>XP: <span id="player-xp">0</span> / <span id="player-xp-next">100</span></p>
+            <p>Or: <span id="player-gold">0</span></p>
+            <p>Étage: <span id="dungeon-floor">1</span></p>
+        </div>
+
+        <!-- Zone de log pour les messages (combat, événements) -->
+        <div id="game-log">
+            <h2>Log du Jeu</h2>
+            <ul id="log-list">
+                <li>Bienvenue dans le donjon !</li>
+            </ul>
+        </div>
+
+        <!-- Zone d'affichage du combat (sera remplie dynamiquement) -->
+        <div id="combat-display" style="display: none;">
+            <h2>Combat !</h2>
+            <div id="enemy-stats">
+                <p>Ennemi: <span id="enemy-name"></span></p>
+                <p>HP: <span id="enemy-hp"></span> / <span id="enemy-max-hp"></span></p>
+            </div>
+            <div id="combat-actions">
+                <button id="attack-button">Attaquer</button>
+                <!-- Autres boutons d'action (utiliser objet, fuir) pourront être ajoutés ici -->
+            </div>
+        </div>
+
+        <!-- Zone d'affichage de la boutique (sera remplie dynamiquement) -->
+        <div id="shop-display" style="display: none;">
+            <h2>Boutique</h2>
+            <ul id="shop-items">
+                <!-- Les objets de la boutique apparaîtront ici -->
+            </ul>
+            <button id="close-shop-button">Quitter la boutique</button>
+        </div>
+
+        <!-- Zone d'affichage de l'inventaire (sera remplie dynamiquement) -->
+        <div id="inventory-display" style="display: none;">
+            <h2>Inventaire</h2>
+            <ul id="inventory-items">
+                <!-- Les objets de l'inventaire apparaîtront ici -->
+            </ul>
+            <button id="close-inventory-button">Fermer l'inventaire</button>
+        </div>
+
+         <!-- Boutons de contrôle principaux (pourraient être affichés/cachés selon le contexte) -->
+         <div id="controls">
+            <button id="open-inventory-button">Inventaire</button>
+            <button id="open-shop-button">Boutique</button> <!-- Peut-être conditionnel -->
+             <!-- Des contrôles de mouvement (N, S, E, O) seront ajoutés dynamiquement ou ici plus tard -->
+         </div>
+
+    </div>
+
+    <!-- Inclusion des modules JavaScript -->
+    <!-- L'attribut 'defer' assure que le script s'exécute après l'analyse du HTML -->
+    <script src="dungeon.js" defer></script>
+    <script src="enemy.js" defer></script>
+    <script src="inventory.js" defer></script> <!-- Inventaire avant combat/shop pour dépendances potentielles -->
+    <script src="combat.js" defer></script>
+    <script src="bossCombat.js" defer></script>
+    <script src="shop.js" defer></script>
+    <!-- Potentiellement un fichier main.js pour orchestrer le tout -->
+    <!-- <script src="main.js" defer></script> -->
+
+</body>
+</html>

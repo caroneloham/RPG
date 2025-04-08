@@ -1,0 +1,169 @@
+/* Styles de base et réinitialisation simple */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Courier New', Courier, monospace; /* Police classique pour jeux textuels */
+    background-color: #222; /* Fond sombre */
+    color: #eee; /* Texte clair */
+    line-height: 1.6;
+    padding: 20px;
+}
+
+#game-container {
+    max-width: 1000px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #333;
+    border: 1px solid #555;
+    display: grid; /* Utilisation de Grid pour l'agencement */
+    grid-template-columns: 2fr 1fr; /* Colonne carte/combat plus large, colonne stats/log plus étroite */
+    grid-template-rows: auto auto 1fr auto; /* Lignes pour titre, carte, stats/log, contrôles */
+    grid-template-areas:
+        "header header"
+        "map    stats"
+        "map    log"
+        "combat combat" /* Zone combat/shop/inventory prend toute la largeur quand visible */
+        "shop shop"
+        "inventory inventory"
+        "controls controls";
+    gap: 15px; /* Espacement entre les zones */
+}
+
+h1 {
+    grid-area: header;
+    text-align: center;
+    color: #fff;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #555;
+    padding-bottom: 10px;
+}
+
+h2 {
+    color: #bbb;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+}
+
+/* --- Zones spécifiques --- */
+
+#map-display {
+    grid-area: map;
+    background-color: #1a1a1a;
+    border: 1px solid #444;
+    padding: 15px;
+    font-family: monospace; /* Assure un alignement correct pour la carte textuelle */
+    white-space: pre; /* Préserve les espaces et retours à la ligne pour l'affichage de la carte */
+    overflow: auto; /* Ajoute des barres de défilement si la carte est grande */
+    min-height: 300px; /* Hauteur minimale pour la carte */
+}
+
+#player-stats {
+    grid-area: stats;
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    padding: 15px;
+}
+
+#game-log {
+    grid-area: log;
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    padding: 15px;
+    height: 200px; /* Hauteur fixe pour le log */
+    overflow-y: scroll; /* Barre de défilement si le log devient long */
+}
+
+#log-list {
+    list-style: none;
+    padding: 0;
+    font-size: 0.9em;
+}
+
+#log-list li {
+    margin-bottom: 5px;
+    border-bottom: 1px dashed #444;
+    padding-bottom: 3px;
+}
+#log-list li:last-child {
+    border-bottom: none;
+}
+
+/* Zones cachées par défaut */
+#combat-display, #shop-display, #inventory-display {
+    background-color: #2f2f2f;
+    border: 1px solid #555;
+    padding: 20px;
+    margin-top: 15px;
+}
+
+#combat-display { grid-area: combat; }
+#shop-display { grid-area: shop; }
+#inventory-display { grid-area: inventory; }
+
+
+#combat-display h2, #shop-display h2, #inventory-display h2 {
+    text-align: center;
+}
+
+#enemy-stats, #combat-actions {
+    margin-bottom: 15px;
+    text-align: center;
+}
+#combat-actions button {
+     margin: 5px;
+}
+
+#shop-items, #inventory-items {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 15px;
+}
+
+#shop-items li, #inventory-items li {
+    background-color: #444;
+    margin-bottom: 8px;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+#shop-items button, #inventory-items button {
+    margin-left: 10px;
+}
+
+
+#controls {
+    grid-area: controls;
+    text-align: center;
+    padding-top: 15px;
+    border-top: 1px solid #555;
+}
+
+/* Style des boutons */
+button {
+    background-color: #555;
+    color: #eee;
+    border: 1px solid #777;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background-color 0.2s ease;
+}
+
+button:hover {
+    background-color: #777;
+}
+
+button:active {
+    background-color: #999;
+}
+
+/* Classes utilitaires (pour afficher/cacher des éléments via JS) */
+.hidden {
+    display: none !important; /* !important pour forcer la priorité sur les styles inline */
+}
