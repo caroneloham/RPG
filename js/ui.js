@@ -11,17 +11,17 @@ const UI = {
         heroModeButton: null,
         eventModeButton: null,
         modeContentArea: null,
-        gameCanvas: null,
-        canvasContext: null,
+        gameCanvas: null,        // Référence à l'élément <canvas>
+        canvasContext: null,     // Référence au contexte 2D (obtenu depuis gameCanvas)
         eventLogList: null,
-        heroListDisplay: null,      // Référence spécifique pour la liste ul des héros
-        heroCapacityDisplay: null, // Référence spécifique pour le p de capacité héros
+        heroListDisplay: null,   // Initialisé seulement en mode héros
+        heroCapacityDisplay: null,// Initialisé seulement en mode héros
     },
     activeMode: null, // Pour savoir quel mode est actif ('build', 'hero', 'event')
 
     init: function() {
         console.log("Initializing UI...");
-        // Récupération des éléments principaux
+        // Récupération des éléments principaux par ID
         this.elements.resourceWood = document.getElementById('resource-wood');
         this.elements.resourceStone = document.getElementById('resource-stone');
         this.elements.resourceGold = document.getElementById('resource-gold');
@@ -30,33 +30,46 @@ const UI = {
         this.elements.heroModeButton = document.getElementById('btn-hero-mode');
         this.elements.eventModeButton = document.getElementById('btn-event-mode');
         this.elements.modeContentArea = document.getElementById('mode-content-area');
-        this.elements.gameCanvas = document.getElementById('game-canvas');
+        this.elements.gameCanvas = document.getElementById('game-canvas'); // Récupère l'élément canvas
         this.elements.eventLogList = document.getElementById('event-list');
 
-        // Vérification critique de l'existence des éléments
+        // Vérification critique de l'existence des éléments récupérés par ID
         let missingElement = false;
         for (const key in this.elements) {
-             // Ne pas vérifier les éléments spécifiques aux modes ici (heroListDisplay, heroCapacityDisplay)
-             if (key !== 'heroListDisplay' && key !== 'heroCapacityDisplay' && !this.elements[key]) {
-                 console.error(`Erreur UI Init: Élément DOM manquant - #${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`);
-                 missingElement = true;
-             }
+            // --- CORRECTION ICI ---
+            // Ignorer les clés qui ne correspondent pas à des éléments récupérés directement par getElementById dans cette phase d'init
+            if (key === 'canvasContext' || key === 'heroListDisplay' || key === 'heroCapacityDisplay') {
+                continue; // Passe à la clé suivante
+            }
+            // --- FIN CORRECTION ---
+
+            // Vérifier si l'élément pour la clé actuelle est null (non trouvé)
+            if (!this.elements[key]) {
+                 // Générer un message d'erreur plus précis indiquant l'ID HTML attendu
+                const expectedId = key.replace(/([A-Z])/g, (g) => `-${g[0].toLowerCase()}`); // Convertit camelCase en kebab-case
+                console.error(`Erreur UI Init: Élément DOM manquant - Vérifiez l'ID '${expectedId}' dans index.html`);
+                missingElement = true;
+            }
         }
+
+        // Si un élément clé manque, arrêter l'initialisation de l'UI
         if (missingElement) {
              console.error("Arrêt de l'initialisation de l'UI car des éléments clés sont manquants.");
-             document.body.innerHTML = "<h1>Erreur Critique</h1><p>Impossible d'initialiser l'interface du jeu. Veuillez vérifier la console (F12).</p>";
+             document.body.innerHTML = "<h1>Erreur Critique</h1><p>Impossible d'initialiser l'interface du jeu. Un composant essentiel est manquant. Veuillez vérifier la console (F12).</p>";
              return; // Arrêter l'exécution de init
         }
 
 
-        // Initialisation du Canvas
-        if (this.elements.gameCanvas.getContext) {
+        // Initialisation du Canvas (SEULEMENT si l'élément canvas a été trouvé)
+        if (this.elements.gameCanvas && this.elements.gameCanvas.getContext) { // Vérifie aussi l'existence de gameCanvas
+            // Obtenir le contexte 2D et le stocker
             this.elements.canvasContext = this.elements.gameCanvas.getContext('2d');
-            console.log("Canvas context initialized.");
+            console.log("Canvas context initialized successfully.");
             // Le premier dessin sera fait par App.js après l'init de Simulation
         } else {
-             console.warn("Le Canvas HTML5 n'est pas supporté par ce navigateur.");
-             this.elements.gameCanvas.style.display = 'none'; // Cacher le canvas
+             console.warn("L'élément Canvas (<canvas id='game-canvas'>) n'a pas été trouvé ou le contexte 2D n'est pas supporté.");
+             // On peut décider de continuer sans canvas ou d'afficher une erreur plus bloquante
+             if(this.elements.gameCanvas) this.elements.gameCanvas.style.display = 'none'; // Cacher la zone si le contexte n'est pas supporté
         }
 
 
@@ -68,7 +81,7 @@ const UI = {
         // Afficher un message initial dans la zone de contenu
         this.elements.modeContentArea.innerHTML = '<p>Bienvenue, Seigneur/Seigneuresse ! Sélectionnez un mode ci-dessus pour commencer à gérer votre royaume.</p>';
 
-        // Mettre à jour l'affichage initial des ressources (si Simulation est déjà chargée)
+        // Mettre à jour l'affichage initial des ressources
         if (typeof Simulation !== 'undefined' && Simulation.getResources) {
             this.updateResourceDisplay(Simulation.getResources());
         } else {
@@ -76,7 +89,7 @@ const UI = {
              this.updateResourceDisplay({ wood: 0, stone: 0, gold: 0, mana: 0 });
         }
 
-        console.log("UI Initialized successfully.");
+        console.log("UI Initialized (core elements checked).");
     },
 
     // Met à jour l'affichage des 4 ressources principales
@@ -154,26 +167,29 @@ const UI = {
     },
 
     attachBuildModeListeners: function() {
-         this.elements.modeContentArea.querySelectorAll('.btn-build').forEach(button => {
-            button.replaceWith(button.cloneNode(true));
-        });
-         this.elements.modeContentArea.querySelectorAll('.btn-upgrade').forEach(button => {
-            button.replaceWith(button.cloneNode(true));
-        });
+        // Utiliser la délégation d'événements est souvent plus performant et évite les problèmes de listeners dupliqués
+        const buildingList = this.elements.modeContentArea.querySelector('#building-list');
+        if (!buildingList) return;
 
-         this.elements.modeContentArea.querySelectorAll('.btn-build').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const id = e.target.dataset.buildingId;
+        // Nettoyer les anciens listeners s'ils existent (moins propre que la délégation)
+        // Ou simplement s'assurer qu'ils sont ajoutés une seule fois via la structure
+
+        // Ajouter un listener unique sur le conteneur #building-list
+        buildingList.addEventListener('click', (e) => {
+            const target = e.target; // L'élément cliqué
+
+            if (target.matches('.btn-build')) {
+                const id = target.dataset.buildingId;
+                console.log(`Delegated Click Build: ${id}`);
                 Simulation.buildBuilding(id);
-            });
-        });
-        this.elements.modeContentArea.querySelectorAll('.btn-upgrade').forEach(button => {
-             button.addEventListener('click', (e) => {
-                const id = e.target.dataset.buildingId;
+            } else if (target.matches('.btn-upgrade')) {
+                const id = target.dataset.buildingId;
+                console.log(`Delegated Click Upgrade: ${id}`);
                 Simulation.upgradeBuilding(id);
-            });
+            }
         });
     },
+
 
     // --- Gestion du Mode Héros ---
     enterHeroMode: function() {
@@ -269,40 +285,37 @@ const UI = {
     },
 
      attachHeroModeListeners: function() {
-        const warriorBtn = document.getElementById('recruit-warrior-btn');
-        const mageBtn = document.getElementById('recruit-mage-btn');
+         // Utiliser la délégation d'événements sur .recruitment-options
+         const recruitmentDiv = this.elements.modeContentArea.querySelector('.recruitment-options');
+         if (!recruitmentDiv) return;
 
-        if (warriorBtn) {
-            const newWarriorBtn = warriorBtn.cloneNode(true);
-            warriorBtn.parentNode.replaceChild(newWarriorBtn, warriorBtn);
-            newWarriorBtn.addEventListener('click', () => {
-                if (Heroes.getHeroes().length < Simulation.stats.maxHeroCapacity && Simulation.getConstructedBuildingsData().some(b => b.typeId === 'caserne')) {
+         recruitmentDiv.addEventListener('click', (e) => {
+             const target = e.target;
+
+             if (target.matches('#recruit-warrior-btn') && !target.disabled) {
+                 console.log("Delegated Click Recruit Warrior");
+                 if (Heroes.getHeroes().length < Simulation.stats.maxHeroCapacity && Simulation.getConstructedBuildingsData().some(b => b.typeId === 'caserne')) {
                     const cost = { gold: 50, wood: 10 };
                     if (Simulation.spendResources(cost)) {
                         Heroes.recruitNewHero("Guerrier Recrue", "Guerrier");
                     }
                 } else {
-                     this.displayMessage("Conditions de recrutement non remplies (capacité ou bâtiment).", "warning");
-                     this.checkRecruitmentAvailability();
+                     this.displayMessage("Conditions de recrutement non remplies.", "warning");
+                     this.checkRecruitmentAvailability(); // Re-check si l'état a changé entre temps
                 }
-            });
-        }
-
-         if (mageBtn) {
-              const newMageBtn = mageBtn.cloneNode(true);
-              mageBtn.parentNode.replaceChild(newMageBtn, mageBtn);
-              newMageBtn.addEventListener('click', () => {
-                 if (Heroes.getHeroes().length < Simulation.stats.maxHeroCapacity && Simulation.getConstructedBuildingsData().some(b => b.typeId === 'tour_mage')) {
+             } else if (target.matches('#recruit-mage-btn') && !target.disabled) {
+                 console.log("Delegated Click Recruit Mage");
+                  if (Heroes.getHeroes().length < Simulation.stats.maxHeroCapacity && Simulation.getConstructedBuildingsData().some(b => b.typeId === 'tour_mage')) {
                     const cost = { gold: 70, mana: 20 };
                      if (Simulation.spendResources(cost)) {
                         Heroes.recruitNewHero("Mage Apprenti", "Mage");
                     }
                 } else {
-                     this.displayMessage("Conditions de recrutement non remplies (capacité ou bâtiment).", "warning");
+                     this.displayMessage("Conditions de recrutement non remplies.", "warning");
                      this.checkRecruitmentAvailability();
                 }
-            });
-        }
+             }
+         });
     },
 
     // --- Gestion du Mode Événements ---
@@ -322,25 +335,19 @@ const UI = {
     },
 
     attachEventModeListeners: function() {
-         const randomBtn = document.getElementById('trigger-random-event-btn');
-         const blessingBtn = document.getElementById('trigger-blessing-btn');
-         const disasterBtn = document.getElementById('trigger-disaster-btn');
+        // Utilisation de la délégation ici aussi
+         const eventModeArea = this.elements.modeContentArea; // Le conteneur des boutons
 
-         if (randomBtn) {
-             const newRandomBtn = randomBtn.cloneNode(true);
-             randomBtn.parentNode.replaceChild(newRandomBtn, randomBtn);
-             newRandomBtn.addEventListener('click', () => Events.triggerRandomEvent());
-         }
-         if (blessingBtn) {
-             const newBlessingBtn = blessingBtn.cloneNode(true);
-             blessingBtn.parentNode.replaceChild(newBlessingBtn, blessingBtn);
-             newBlessingBtn.addEventListener('click', () => Events.triggerSpecificEvent("Bénédiction Sylvestre"));
-         }
-         if (disasterBtn) {
-             const newDisasterBtn = disasterBtn.cloneNode(true);
-             disasterBtn.parentNode.replaceChild(newDisasterBtn, disasterBtn);
-             newDisasterBtn.addEventListener('click', () => Events.triggerSpecificEvent("Tempête Inattendue"));
-         }
+         eventModeArea.addEventListener('click', (e) => {
+             const target = e.target;
+             if (target.matches('#trigger-random-event-btn')) {
+                 Events.triggerRandomEvent();
+             } else if (target.matches('#trigger-blessing-btn')) {
+                  Events.triggerSpecificEvent("Bénédiction Sylvestre");
+             } else if (target.matches('#trigger-disaster-btn')) {
+                  Events.triggerSpecificEvent("Tempête Inattendue");
+             }
+         });
     },
 
     // --- Fonctions Utilitaires UI ---
@@ -363,125 +370,80 @@ const UI = {
     },
 
     // --- Dessin sur le Canvas ---
-
-    // Fonction principale pour dessiner tout l'état du jeu sur le canvas
     drawGame: function() {
+        // Vérifier si le contexte est bien initialisé avant de dessiner
         if (!this.elements.canvasContext) {
-            return;
+             console.warn("Tentative de dessin (drawGame) mais le contexte canvas n'est pas disponible.");
+            return; // Ne rien faire si pas de contexte
         }
         const ctx = this.elements.canvasContext;
         const canvas = this.elements.gameCanvas;
 
-        // 1. Nettoyer complètement le canvas avant de redessiner
+        // 1. Nettoyer
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // ************************************************
-        // ********** NOUVELLE PARTIE : DESSIN DU FOND MAP **********
-        // ************************************************
+        // 2. Dessiner le fond MAP
         this.drawMapBackground(ctx, canvas.width, canvas.height);
 
+        // 3. Dessiner la grille (optionnel)
+        this.drawGrid(ctx, canvas.width, canvas.height, 50, 'rgba(0, 0, 0, 0.08)');
 
-        // 3. Dessiner la grille (Optionnel, peut être désactivé si trop chargé)
-        // Mettre une grille plus légère et peut-être pas sur toute la map
-        this.drawGrid(ctx, canvas.width, canvas.height, 50, 'rgba(0, 0, 0, 0.08)'); // Grille plus discrète
-
-        // 4. Dessiner les bâtiments construits PAR-DESSUS le fond et la grille
+        // 4. Dessiner les bâtiments
         this.drawBuildings(ctx);
 
         // 5. Dessiner les héros (futur)
         // this.drawHeroes(ctx);
-
-        // 6. Dessiner d'autres éléments UI sur le canvas si nécessaire
     },
 
-    // NOUVELLE FONCTION : Dessine un fond de carte stylisé
     drawMapBackground: function(ctx, width, height) {
-        // Zone principale (Plaines vertes)
-        ctx.fillStyle = '#8FBC8F'; // DarkSeaGreen (couleur de base pour les plaines)
+        // Plaines
+        ctx.fillStyle = '#8FBC8F';
         ctx.fillRect(0, 0, width, height);
-
-        // Zone d'eau (ex: un lac ou une rivière dans un coin)
-        ctx.fillStyle = '#6495ED'; // CornflowerBlue
+        // Eau
+        ctx.fillStyle = '#6495ED';
         ctx.beginPath();
-        ctx.moveTo(width * 0.7, 0); // Coin supérieur droit
+        ctx.moveTo(width * 0.7, 0);
         ctx.lineTo(width, 0);
         ctx.lineTo(width, height * 0.4);
-        ctx.quadraticCurveTo(width * 0.85, height * 0.45, width * 0.65, height * 0.3); // Courbe pour le bord du lac
+        ctx.quadraticCurveTo(width * 0.85, height * 0.45, width * 0.65, height * 0.3);
         ctx.closePath();
         ctx.fill();
-
-        // Zone de forêt (ex: une bande sur le côté gauche)
-        ctx.fillStyle = '#228B22'; // ForestGreen
-        ctx.fillRect(0, 0, width * 0.15, height); // Bande verticale à gauche
-         // Ajouter quelques "arbres" stylisés (cercles) pour la texture
-         ctx.fillStyle = '#006400'; // DarkGreen
+        // Forêt
+        ctx.fillStyle = '#228B22';
+        ctx.fillRect(0, 0, width * 0.15, height);
+         ctx.fillStyle = '#006400';
          for(let i=0; i<15; i++) {
              const treeX = Math.random() * (width * 0.14);
              const treeY = Math.random() * height;
-             const treeRadius = Math.random() * 5 + 3; // Rayon entre 3 et 8
-             ctx.beginPath();
-             ctx.arc(treeX, treeY, treeRadius, 0, Math.PI * 2);
-             ctx.fill();
+             const treeRadius = Math.random() * 5 + 3;
+             ctx.beginPath(); ctx.arc(treeX, treeY, treeRadius, 0, Math.PI * 2); ctx.fill();
          }
-
-
-        // Zone de collines/montagnes (ex: en bas)
-        ctx.fillStyle = '#A0522D'; // Sienna (couleur de base collines)
+        // Collines/Montagnes
+        ctx.fillStyle = '#A0522D';
         ctx.beginPath();
-        ctx.moveTo(0, height * 0.8);
-        // Dessiner une ligne brisée pour simuler des collines
-        ctx.lineTo(width * 0.1, height * 0.75);
-        ctx.lineTo(width * 0.25, height * 0.85);
-        ctx.lineTo(width * 0.4, height * 0.7);
-        ctx.lineTo(width * 0.6, height * 0.9);
-        ctx.lineTo(width * 0.75, height * 0.75);
-        ctx.lineTo(width * 0.9, height * 0.85);
-        ctx.lineTo(width, height * 0.8);
-        // Remplir la zone sous la ligne jusqu'en bas
-        ctx.lineTo(width, height);
-        ctx.lineTo(0, height);
-        ctx.closePath();
-        ctx.fill();
-         // Ajouter quelques pics montagneux stylisés (triangles gris)
-         ctx.fillStyle = '#696969'; // DimGray
-         const peaks = [ [0.2, 0.8], [0.5, 0.75], [0.8, 0.82] ]; // Positions relatives x, y (haut du triangle)
+        ctx.moveTo(0, height * 0.8); ctx.lineTo(width * 0.1, height * 0.75); ctx.lineTo(width * 0.25, height * 0.85); ctx.lineTo(width * 0.4, height * 0.7); ctx.lineTo(width * 0.6, height * 0.9); ctx.lineTo(width * 0.75, height * 0.75); ctx.lineTo(width * 0.9, height * 0.85); ctx.lineTo(width, height * 0.8); ctx.lineTo(width, height); ctx.lineTo(0, height); ctx.closePath(); ctx.fill();
+         ctx.fillStyle = '#696969';
+         const peaks = [ [0.2, 0.8], [0.5, 0.75], [0.8, 0.82] ];
          peaks.forEach(p => {
-             const peakX = width * p[0];
-             const peakY = height * p[1];
-             const baseWidth = width * 0.08;
-             ctx.beginPath();
-             ctx.moveTo(peakX - baseWidth/2, height * 0.9); // Base gauche
-             ctx.lineTo(peakX, peakY); // Sommet
-             ctx.lineTo(peakX + baseWidth/2, height * 0.9); // Base droite
-             ctx.closePath();
-             ctx.fill();
+             const peakX = width * p[0]; const peakY = height * p[1]; const baseWidth = width * 0.08;
+             ctx.beginPath(); ctx.moveTo(peakX - baseWidth/2, height * 0.9); ctx.lineTo(peakX, peakY); ctx.lineTo(peakX + baseWidth/2, height * 0.9); ctx.closePath(); ctx.fill();
          });
-
-        // Ajouter une texture légère ou un dégradé pourrait améliorer encore, mais restons simple pour l'instant.
-         console.log("Map background drawn with terrain zones.");
     },
 
-
-    // Dessine une grille sur le canvas (fonction utilitaire)
     drawGrid: function(ctx, width, height, gridSize, gridColor = 'rgba(0, 0, 0, 0.1)') {
         ctx.beginPath();
-        ctx.strokeStyle = gridColor; // Utilise la couleur passée en paramètre
-        ctx.lineWidth = 0.5; // Ligne très fine
-
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 0.5;
         for (let x = gridSize; x < width; x += gridSize) {
-            ctx.moveTo(x + 0.5, 0); // +0.5 pour des lignes plus nettes sur certains rendus
-            ctx.lineTo(x + 0.5, height);
+            ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, height);
         }
         for (let y = gridSize; y < height; y += gridSize) {
-            ctx.moveTo(0, y + 0.5);
-            ctx.lineTo(width, y + 0.5);
+            ctx.moveTo(0, y + 0.5); ctx.lineTo(width, y + 0.5);
         }
         ctx.stroke();
-         ctx.lineWidth = 1; // Remettre la valeur par défaut pour les autres dessins
+         ctx.lineWidth = 1;
     },
 
-
-    // Dessine les bâtiments sur le canvas
     drawBuildings: function(ctx) {
         const buildings = Simulation.getConstructedBuildingsData();
         const baseBuildingSize = 35;
@@ -490,51 +452,22 @@ const UI = {
         buildings.forEach(building => {
             const level = building.level;
             const buildingSize = baseBuildingSize + (level - 1) * sizeIncreasePerLevel;
-            const x = building.position.x; // Centre X
-            const y = building.position.y; // Centre Y
-            const halfSize = buildingSize / 2;
+            const x = building.position.x; const y = building.position.y; const halfSize = buildingSize / 2;
 
-            // Appliquer une ombre légère aux bâtiments pour les détacher du fond
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-            ctx.shadowBlur = 5;
-            ctx.shadowOffsetX = 2;
-            ctx.shadowOffsetY = 2;
-
-            // Dessiner la forme du bâtiment
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.4)'; ctx.shadowBlur = 5; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2;
             ctx.fillStyle = building.color || '#CCCCCC';
             ctx.fillRect(x - halfSize, y - halfSize, buildingSize, buildingSize);
-
-            // Dessiner la bordure
-            ctx.strokeStyle = '#333333';
-            ctx.lineWidth = (level > 3) ? 1.5 : 1; // Bordure légèrement plus épaisse pour haut niveau
+            ctx.strokeStyle = '#333333'; ctx.lineWidth = (level > 3) ? 1.5 : 1;
             ctx.strokeRect(x - halfSize, y - halfSize, buildingSize, buildingSize);
+            ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; ctx.lineWidth = 1;
 
-            // Réinitialiser l'ombre avant de dessiner le texte
-            ctx.shadowColor = 'transparent';
-            ctx.shadowBlur = 0;
-            ctx.shadowOffsetX = 0;
-            ctx.shadowOffsetY = 0;
-             ctx.lineWidth = 1; // Réinitialiser la largeur de ligne
-
-            // Afficher le niveau du bâtiment (avec une petite ombre de texte pour lisibilité)
-            ctx.fillStyle = '#FFFFFF';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.font = `bold ${10 + level}px Arial`;
-             // Petite ombre portée pour le texte
-             ctx.shadowColor = 'black';
-             ctx.shadowBlur = 1;
-             ctx.shadowOffsetX = 1;
-             ctx.shadowOffsetY = 1;
+            ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `bold ${10 + level}px Arial`;
+             ctx.shadowColor = 'black'; ctx.shadowBlur = 1; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
             ctx.fillText(`Lv${level}`, x, y);
-            // Réinitialiser l'ombre du texte
-             ctx.shadowColor = 'transparent';
-             ctx.shadowBlur = 0;
-             ctx.shadowOffsetX = 0;
-             ctx.shadowOffsetY = 0;
-
+             ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
         });
-        console.log(`${buildings.length} buildings drawn on canvas.`);
+        // Retirer le log répétitif d'ici pour éviter de spammer la console
+        // console.log(`${buildings.length} buildings drawn on canvas.`);
     },
 
 }; // Fin de l'objet UI
