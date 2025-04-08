@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chroniques d'Aldoria</title>
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/theme.css">
+</head>
+<body>
+    <header id="game-header">
+        <h1>Chroniques d'Aldoria</h1>
+        <nav id="mode-selector">
+            <button id="btn-build-mode">Mode Construction</button>
+            <button id="btn-hero-mode">Gestion Héros</button>
+            <button id="btn-event-mode">Gestion Événements</button>
+        </nav>
+    </header>
+
+    <main id="game-content">
+        <section id="resource-display">
+            <h2>Ressources du Royaume</h2>
+            <ul>
+                <li>Bois: <span id="resource-wood">0</span></li>
+                <li>Pierre: <span id="resource-stone">0</span></li>
+                <li>Or: <span id="resource-gold">0</span></li>
+                <li>Mana: <span id="resource-mana">0</span></li>
+            </ul>
+        </section>
+
+        <section id="main-view">
+            <div id="mode-content-area">
+                 <!-- Le contenu spécifique au mode s'affichera ici -->
+                 <p>Bienvenue, Seigneur/Seigneuresse ! Sélectionnez un mode ci-dessus.</p>
+            </div>
+            <div id="event-log">
+                <h3>Journal des Événements</h3>
+                <ul id="event-list">
+                    <!-- Les événements seront listés ici -->
+                </ul>
+            </div>
+             <section id="game-canvas-area">
+                 <h2>Vue du Royaume (Animation/Graphique)</h2>
+                <canvas id="game-canvas" width="600" height="300">
+                    Votre navigateur ne supporte pas le Canvas HTML5.
+                </canvas>
+            </section>
+        </section>
+
+    </main>
+
+    <footer id="game-footer">
+        <p>&copy; 2023 Chroniques d'Aldoria - Votre Royaume Vous Attend</p>
+    </footer>
+
+    <!-- JavaScript Files -->
+    <script src="js/simulation.js"></script>
+    <script src="js/events.js"></script>
+    <script src="js/heroes.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

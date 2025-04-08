@@ -1,0 +1,80 @@
+/* css/theme.css */
+body {
+    background-color: #f5f1e8; /* Couleur parchemin clair */
+    color: #4a2c0f; /* Brun foncé pour le texte */
+}
+
+#game-header {
+    background-color: #6b4f38; /* Brun bois */
+    color: #e4d8c7; /* Texte couleur parchemin */
+    border-bottom: 3px solid #4a2c0f; /* Bordure brun foncé */
+}
+
+ #game-header h1 {
+     color: #f0e68c; /* Couleur or pour le titre */
+     text-shadow: 1px 1px 2px #000;
+ }
+
+#resource-display {
+    background-color: #e4d8c7; /* Fond parchemin pour ressources */
+    border-right: 2px solid #8b6b4f; /* Bordure bois plus marquée */
+    border-radius: 5px;
+    padding: 15px;
+}
+
+#resource-display h2 {
+    color: #6b4f38; /* Titre brun bois */
+    border-bottom: 1px solid #8b6b4f;
+    padding-bottom: 5px;
+}
+
+#resource-display ul li span {
+    font-weight: bold;
+    color: #a0522d; /* Sienna pour les chiffres */
+}
+ /* Couleurs spécifiques pour chaque ressource */
+#resource-wood { color: #8b4513; } /* SaddleBrown */
+#resource-stone { color: #708090; } /* SlateGray */
+#resource-gold { color: #daa520; } /* Goldenrod */
+#resource-mana { color: #483d8b; } /* DarkSlateBlue */
+
+
+button {
+    background-color: #8b6b4f; /* Brun bois moyen pour boutons */
+    color: #f5f1e8; /* Texte parchemin clair */
+    border: 1px solid #4a2c0f; /* Bordure brun foncé */
+    transition: background-color 0.3s ease, transform 0.1s ease;
+}
+
+button:hover {
+    background-color: #a07e5f; /* Brun plus clair au survol */
+    transform: translateY(-1px); /* Léger soulèvement */
+}
+ button:active {
+     transform: translateY(0px); /* Retour à la position initiale au clic */
+ }
+
+#mode-content-area {
+    background-color: rgba(228, 216, 199, 0.5); /* Parchemin semi-transparent */
+    border: 1px solid #a07e5f;
+    border-radius: 4px;
+}
+
+#event-log {
+  background-color: #fdfaf3;
+  border: 1px solid #c1a88a;
+}
+
+ #event-log h3 {
+    color: #6b4f38;
+ }
+
+#game-canvas {
+    border: 2px solid #6b4f38; /* Bordure bois pour le canvas */
+    background-color: #ffffff; /* Fond blanc simple pour le canvas (à personnaliser) */
+}
+
+#game-footer {
+    background-color: #4a2c0f; /* Brun très foncé */
+    color: #e4d8c7; /* Texte parchemin */
+}

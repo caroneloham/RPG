@@ -1,0 +1,76 @@
+/* css/layout.css */
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+#game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+}
+
+#game-header h1 {
+    margin: 0;
+}
+
+#game-content {
+    display: flex;
+    flex-grow: 1; /* Prend l'espace restant */
+    padding: 20px;
+    gap: 20px; /* Espace entre les sections */
+}
+
+#resource-display {
+    flex-basis: 200px; /* Largeur fixe pour les ressources */
+    padding-right: 20px;
+    border-right: 1px solid #ccc; /* Séparateur visuel */
+}
+
+#resource-display ul li {
+    margin-bottom: 10px;
+}
+
+#main-view {
+    flex-grow: 1; /* Prend le reste de la largeur */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#mode-content-area {
+    min-height: 100px; /* Espace minimum pour le contenu du mode */
+    padding: 15px;
+    border: 1px dashed #ccc; /* Pour visualiser la zone */
+}
+
+#event-log {
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  padding: 10px;
+}
+
+#event-log ul li {
+  border-bottom: 1px dotted #eee;
+  padding-bottom: 5px;
+  margin-bottom: 5px;
+  font-size: 0.9em;
+}
+ #event-log ul li:last-child {
+   border-bottom: none;
+ }
+
+
+#game-canvas-area {
+    margin-top: 20px;
+}
+
+#game-footer {
+    padding: 10px 20px;
+    text-align: center;
+    font-size: 0.8em;
+    margin-top: auto; /* Pousse le footer en bas */
+}

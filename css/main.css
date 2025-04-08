@@ -1,0 +1,36 @@
+/* css/main.css */
+@import url('https://fonts.googleapis.com/css2?family=MedievalSharp&family=Roboto:wght@400;700&display=swap'); /* Exemple de police */
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif; /* Police de base */
+    font-size: 16px;
+    line-height: 1.6;
+    color: #333; /* Couleur de texte par défaut */
+}
+
+h1, h2, h3 {
+    font-family: 'MedievalSharp', cursive; /* Police thématique pour les titres */
+    margin-bottom: 0.5em;
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+}
+
+button {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 1em;
+    border: none;
+    border-radius: 4px;
+    margin: 0 5px;
+}
+
+canvas {
+    border: 1px solid #ccc; /* Bordure simple pour le canvas */
+    display: block; /* Empêche l'espace blanc en dessous */
+    margin-top: 10px;
+}
