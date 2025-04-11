@@ -3,63 +3,432 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chroniques d'Aldoria</title>
-    <!-- CSS Files -->
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/theme.css">
+    <title>Arène Médiévale HTML Étendue</title>
+    <style>
+        body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #111; overflow: hidden; font-family: Georgia, 'Times New Roman', Times, serif; color: #f5f5f5; }
+        canvas { display: block; background-color: #0c0a09; border: 4px solid #dec7a3; box-shadow: 0 0 30px rgba(222, 199, 163, 0.35); image-rendering: pixelated; image-rendering: crisp-edges; }
+        #ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 10; }
+        #game-info { position: absolute; top: 18px; width: 96%; max-width: 1024px; display: flex; justify-content: space-between; align-items: flex-start; font-size: 21px; text-shadow: 2px 2px 4px rgba(0,0,0,1); color: #ffffff; }
+        .player-ui { width: 43%; }
+        .health-bar-container { width: 100%; height: 30px; background-color: rgba(90, 90, 90, 0.88); border: 2px solid #6d4c41; border-radius: 6px; overflow: hidden; position: relative; margin-bottom: 6px; box-shadow: inset 0 0 5px rgba(0,0,0,0.4); }
+        .health-bar { height: 100%; width: 100%; transition: width 0.15s ease-out; }
+        #player1-health-bar { background: linear-gradient(to right, #4caf50, #a5d6a7); }
+        #player2-health-bar { background: linear-gradient(to right, #f44336, #ef9a9a); direction: rtl; }
+        .special-bar-container { width: 65%; height: 12px; background-color: rgba(70, 70, 70, 0.8); border: 1px solid #5f5f5f; border-radius: 4px; overflow: hidden; box-shadow: inset 0 0 3px rgba(0,0,0,0.3); }
+        .special-bar { height: 100%; width: 0%; background: linear-gradient(to right, #42a5f5, #bbdefb); transition: width 0.1s linear; }
+        #player1-special-container { margin-top: 2px; margin-left: 0; }
+        #player2-special-container { margin-top: 2px; margin-right: 0; display: flex; justify-content: flex-end;}
+        #timer { font-size: 44px; font-weight: bold; color: #FFEE58; background-color: rgba(10, 10, 10, 0.75); padding: 7px 18px; border-radius: 7px; border: 3px solid #bcaaa4; min-width: 75px; text-align: center; margin-top: 15px;}
+        #message-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 48px; font-weight: 900; color: #FFDF8C; text-align: center; text-shadow: 4px 4px 8px rgba(0,0,0,1); background: radial-gradient(ellipse at center, rgba(141, 110, 99, 0.92) 0%, rgba(93, 64, 55, 0.95) 100%); padding: 40px 60px; border-radius: 15px; border: 5px groove #ffe0b2; display: none; }
+        #message-center.show { display: block; }
+        #combo-indicator { position: absolute; top: 140px; left: 50%; transform: translateX(-50%); font-size: 32px; color: #ffa000; font-weight: bold; text-shadow: 3px 3px 6px rgba(0,0,0,0.9); display: none; opacity: 0; transition: opacity 0.4s ease-out, top 0.4s ease-out; }
+        #combo-indicator.show { display: block; opacity: 1; top: 115px; }
+    </style>
 </head>
 <body>
-    <header id="game-header">
-        <h1>Chroniques d'Aldoria</h1>
-        <nav id="mode-selector">
-            <button id="btn-build-mode">Mode Construction</button>
-            <button id="btn-hero-mode">Gestion Héros</button>
-            <button id="btn-event-mode">Gestion Événements</button>
-        </nav>
-    </header>
+    <div id="ui-overlay"> <div id="game-info"> <div class="player-ui"> <div id="player1-health-container" class="health-bar-container"> <div id="player1-health-bar" class="health-bar"></div> </div> <div id="player1-special-container" class="special-bar-container"> <div id="player1-special-bar" class="special-bar"></div> </div> </div> <div id="timer">99</div> <div class="player-ui"> <div id="player2-health-container" class="health-bar-container" style="direction: rtl;"> <div id="player2-health-bar" class="health-bar"></div> </div> <div id="player2-special-container" class="special-bar-container"> <div id="player2-special-bar" class="special-bar"></div> </div> </div> </div> <div id="message-center"> Appuyez sur Entrée </div> <div id="combo-indicator"></div> </div>
+    <canvas id="gameCanvas"></canvas>
 
-    <main id="game-content">
-        <section id="resource-display">
-            <h2>Ressources du Royaume</h2>
-            <ul>
-                <li>Bois: <span id="resource-wood">0</span></li>
-                <li>Pierre: <span id="resource-stone">0</span></li>
-                <li>Or: <span id="resource-gold">0</span></li>
-                <li>Mana: <span id="resource-mana">0</span></li>
-            </ul>
-        </section>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const player1HealthBar = document.getElementById('player1-health-bar');
+        const player2HealthBar = document.getElementById('player2-health-bar');
+        const player1SpecialBar = document.getElementById('player1-special-bar');
+        const player2SpecialBar = document.getElementById('player2-special-bar');
+        const timerElement = document.getElementById('timer');
+        const messageCenter = document.getElementById('message-center');
+        const comboIndicator = document.getElementById('combo-indicator');
 
-        <section id="main-view">
-            <div id="mode-content-area">
-                 <!-- Le contenu spécifique au mode s'affichera ici -->
-                 <p>Bienvenue, Seigneur/Seigneuresse ! Sélectionnez un mode ci-dessus.</p>
-            </div>
-            <div id="event-log">
-                <h3>Journal des Événements</h3>
-                <ul id="event-list">
-                    <!-- Les événements seront listés ici -->
-                </ul>
-            </div>
-             <section id="game-canvas-area">
-                 <h2>Vue du Royaume (Animation/Graphique)</h2>
-                <canvas id="game-canvas" width="600" height="300">
-                    Votre navigateur ne supporte pas le Canvas HTML5.
-                </canvas>
-            </section>
-        </section>
+        canvas.width = 1024; canvas.height = 576;
 
-    </main>
+        const gravity = 0.85;
+        const floorY = canvas.height - 80;
+        const JUMP_VELOCITY = -21;
+        const PLAYER_SPEED = 6.2;
+        const AI_SPEED = 4.8;
+        const MAX_HEALTH = 100;
+        const ATTACK_DAMAGE = 7; // Slightly reduced base dmg due to more frequent hits possible
+        const COMBO_BONUS_DAMAGE = 4;
+        const SPECIAL_ATTACK_DAMAGE = 16;
+        const HEALTH_PICKUP_AMOUNT = 22;
+        const ATTACK_COOLDOWN = 260;
+        const AI_ATTACK_COOLDOWN = 350;
+        const SPECIAL_COOLDOWN = 4500;
+        const ATTACK_DURATION = 105;
+        const SPECIAL_ATTACK_DURATION = 370;
+        const DASH_SPEED = 13.5;
+        const GAME_DURATION = 99;
+        const AI_REACTION_TIME = 100;
+        const AI_ATTACK_PROBABILITY = 0.08;
+        const AI_SPECIAL_PROBABILITY = 0.02;
+        const AI_PICKUP_CHANCE = 0.05; // Small chance AI will go for pickup
+        const PARTICLE_COUNT = 12;
+        const MAX_SPECIAL = 100;
+        const SPECIAL_RECHARGE_RATE = 20;
+        const PICKUP_SPAWN_INTERVAL = 13000;
+        const SHAKE_DURATION = 130;
+        const SHAKE_INTENSITY = 4;
 
-    <footer id="game-footer">
-        <p>&copy; 2023 Chroniques d'Aldoria - Votre Royaume Vous Attend</p>
-    </footer>
+        let player;
+        let opponent;
+        let timer = GAME_DURATION;
+        let timerId;
+        let keys = {};
+        let gameState = 'MENU';
+        let lastFrameTime = 0;
+        let deltaTime = 0;
+        let aiActionTimeout = null;
+        let particles = [];
+        let pickups = [];
+        let platforms = [];
+        let foregroundElements = [];
+        let lastPickupSpawnTime = 0;
+        let worldWidth = canvas.width * 2.5; // Even larger world
+        let camera = { x: 0, y: 0, targetX: 0 };
+        let screenShake = { intensity: 0, duration: 0 };
+        let lastPlayerHitTime = 0;
+        let playerComboCount = 0;
+        let comboIndicatorTimeout;
 
-    <!-- JavaScript Files -->
-    <script src="js/simulation.js"></script>
-    <script src="js/events.js"></script>
-    <script src="js/heroes.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/app.js"></script>
+        class Particle { // No changes needed here
+            constructor(x, y, color = '#FFA500', size = 3, speed = 3.5, life = 0.4, useGravity = true) { this.position = { x, y }; this.velocity = { x: (Math.random() - 0.5) * speed * 2, y: (Math.random() - 0.5) * speed * 2 - 1}; this.color = color; this.size = Math.random() * size + 1; this.life = life; this.initialLife = life; this.alpha = 1; this.useGravity = useGravity; }
+            update(dt) { this.position.x += this.velocity.x * dt * 60; this.position.y += this.velocity.y * dt * 60; if (this.useGravity) this.velocity.y += gravity * 0.6 * dt * 60; this.life -= dt; this.alpha = Math.max(0, this.life / this.initialLife); }
+            draw(offsetX) { ctx.globalAlpha = this.alpha; ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.position.x - offsetX, this.position.y, this.size, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
+        }
+        function emitParticles(x, y, count, color, size, speed, useGravity = true) { for (let i = 0; i < count; i++) particles.push(new Particle(x, y, color, size, speed, useGravity)); }
+
+        class Pickup { // No changes needed here
+             constructor(x, y, type = 'health'){ this.position = {x, y}; this.type = type; this.active = true; this.size = 20; this.bobOffset = 0; this.bobSpeed = 2; }
+             update(dt){ if(!this.active) return; this.bobOffset = Math.sin(performance.now() / 180) * this.bobSpeed; }
+             draw(offsetX){ if(!this.active) return; const drawX = this.position.x - offsetX; const drawY = this.position.y + this.bobOffset; if (this.type === 'health') { ctx.fillStyle = '#ff8a80'; ctx.beginPath(); ctx.moveTo(drawX, drawY - this.size * 0.3); ctx.bezierCurveTo(drawX, drawY - this.size * 0.7, drawX - this.size * 0.6, drawY - this.size * 0.7, drawX - this.size * 0.6, drawY - this.size * 0.3); ctx.bezierCurveTo(drawX - this.size * 0.6, drawY + this.size * 0.1, drawX, drawY + this.size * 0.5, drawX, drawY + this.size * 0.5); ctx.bezierCurveTo(drawX, drawY + this.size * 0.5, drawX + this.size * 0.6, drawY + this.size * 0.1, drawX + this.size * 0.6, drawY - this.size * 0.3); ctx.bezierCurveTo(drawX + this.size * 0.6, drawY - this.size * 0.7, drawX, drawY - this.size * 0.7, drawX, drawY - this.size * 0.3); ctx.fill(); ctx.strokeStyle = '#e57373'; ctx.lineWidth=1.5; ctx.stroke(); } }
+             checkCollision(sprite) { if (!this.active) return false; const dx = sprite.position.x + sprite.width / 2 - this.position.x; const dy = sprite.position.y + sprite.height / 2 - this.position.y; return Math.sqrt(dx * dx + dy * dy) < (sprite.width / 2 + this.size * 0.65); }
+        }
+
+        class Platform {
+             constructor(x, y, width, height, style = 0){ this.position = {x,y}; this.width = width; this.height = height; this.style = style; this.color1 = style === 0 ? '#8d6e63' : '#a1887f'; this.color2 = style === 0 ? '#6d4c41' : '#795548';}
+             draw(offsetX) { const drawX = this.position.x - offsetX; ctx.fillStyle = this.color1; ctx.fillRect(drawX, this.position.y, this.width, this.height); ctx.fillStyle = this.color2; ctx.fillRect(drawX, this.position.y+this.height - 6, this.width, 6); /* Simple bottom shadow/edge */ if(this.style === 1) { ctx.fillStyle = 'rgba(0,0,0,0.05)'; for(let i=0; i<this.width; i+=15) ctx.fillRect(drawX+i, this.position.y, 1, this.height);} /* Vertical lines */ }
+        }
+
+        class ForegroundElement { // e.g., Pillars, Archways
+            constructor(x, y, width, height, type='pillar'){ this.position = {x, y}; this.width=width; this.height=height; this.type=type; this.color1='#6d4c41'; this.color2='#5d4037';}
+             draw(offsetX){
+                 const drawX = this.position.x - offsetX; const drawY = this.position.y;
+                 if(this.type === 'pillar'){
+                     ctx.fillStyle = this.color1; ctx.fillRect(drawX, drawY, this.width, this.height); // Main body
+                     ctx.fillStyle = this.color2; ctx.fillRect(drawX - 5, drawY + this.height - 20, this.width + 10, 20); // Base
+                     ctx.fillRect(drawX - 5, drawY, this.width + 10, 15); // Cap
+                      // Simple shading
+                      ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(drawX + this.width * 0.7, drawY, this.width * 0.3, this.height);
+                      ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(drawX, drawY, this.width * 0.2, this.height);
+                 }
+             }
+        }
+
+        class Sprite { // Needs AI and collision updates for multiple platforms
+             constructor({ position, velocity, color = '#607d8b', opponentColor = '#a1887f', dimensions = { width: 48, height: 145 }, attackBox = { offset: { x: 38, y: 32 }, width: 95, height: 48 }, specialAttackBox = { offset: { x: 48, y: 28}, width: 115, height: 60}, health = MAX_HEALTH, controls = {}, isAI = false, playerRef = null, variation = 1 }) {
+                this.position = position; this.velocity = velocity; this.dimensions = dimensions; this.height = this.dimensions.height; this.width = this.dimensions.width;
+                this.baseColor = color; this.opponentColor = opponentColor; this.variation = variation;
+                this.attackBox = { position: { x: 0, y: 0 }, offset: attackBox.offset, width: attackBox.width, height: attackBox.height };
+                this.specialAttackBox = { position: { x: 0, y: 0 }, offset: specialAttackBox.offset, width: specialAttackBox.width, height: specialAttackBox.height };
+                this.isAttacking = false; this.isPerformingSpecial = false; this.specialDash = false; this.attackTimeout = null; this.specialTimeout = null; this.attackCooldownTimeout = null; this.specialCooldownTimeout = null;
+                this.canAttack = true; this.canUseSpecial = true; this.currentSpecial = 0; this.health = health; this.isGrounded = false; this.currentPlatform = null; // Store ref to current platform
+                this.lastkey = ''; this.controls = controls; this.facingRight = true; this.isAI = isAI; this.playerRef = playerRef; this.currentAIAction = null; this.aiDecisionTimer = 0; this.aiTarget = null; this.attackRange = this.attackBox.width; this.lastHitTime = 0;
+            }
+
+            drawCharacter(offsetX) { // Drawing remains similar
+                const x = this.position.x - offsetX; const y = this.position.y; const w = this.width; const h = this.height; const headSize = w * 0.42; const torsoHeight = h * 0.38; const legHeight = h * 0.4; const armWidth = w * 0.2; const armHeight = h * 0.46; const color = this.isAI ? this.opponentColor : this.baseColor; const detailColor = this.variation === 1 ? '#cfd8dc' : '#ffe0b2'; // Cooler Silver, Warmer Gold
+
+                 ctx.fillStyle = color; const headX = this.facingRight ? x + w * 0.26 : x + w * 0.32; ctx.fillRect(headX, y, headSize, headSize * 1.1); // Slightly taller head
+                 ctx.fillStyle = detailColor; ctx.fillRect(headX + headSize * 0.1, y + headSize * 0.45, headSize * 0.8, headSize * 0.18); // Visor
+
+                 ctx.fillStyle = color; const torsoX = x + w * 0.08; const torsoY = y + headSize*1.1; ctx.fillRect(torsoX, torsoY, w * 0.84, torsoHeight); // Torso
+                 ctx.fillStyle = detailColor; ctx.fillRect(torsoX, torsoY + torsoHeight * 0.8, w * 0.84, torsoHeight * 0.15); // Belt
+
+                 ctx.fillStyle = color; const legY = torsoY + torsoHeight; const legWidth = w * 0.32; ctx.fillRect(torsoX, legY, legWidth, legHeight); ctx.fillRect(torsoX + w * 0.52, legY, legWidth, legHeight); // Legs
+
+                 const armY = torsoY + torsoHeight * 0.05; if (this.facingRight) ctx.fillRect(x + w * 0.84, armY, armWidth, armHeight); else ctx.fillRect(x - w * 0.04, armY, armWidth, armHeight); // Arms
+
+                 let currentAttackBox = this.isPerformingSpecial ? this.specialAttackBox : this.attackBox; let isCurrentlyAttacking = this.isAttacking || this.isPerformingSpecial;
+                 if (isCurrentlyAttacking && !this.specialDash) { ctx.fillStyle = this.isPerformingSpecial ? 'rgba(255, 130, 60, 0.6)' : 'rgba(255, 255, 100, 0.5)'; ctx.fillRect( currentAttackBox.position.x - offsetX, currentAttackBox.position.y, currentAttackBox.width, currentAttackBox.height ); }
+                 if(this.isPerformingSpecial && this.specialDash){ ctx.fillStyle = 'rgba(0, 220, 255, 0.4)'; ctx.beginPath(); ctx.arc(x + this.width/2, y + this.height/2, this.width*1.1, 0, Math.PI * 2); ctx.fill(); }
+                  else if (this.currentSpecial === MAX_SPECIAL) { ctx.fillStyle = 'rgba(0, 200, 255, 0.15)'; ctx.beginPath(); ctx.arc(x + this.width/2, y + this.height/2, this.width * 0.7, 0, Math.PI * 2); ctx.fill(); }
+             }
+
+            update(dt, platforms) { // Collision needs significant update
+                this.currentSpecial = Math.min(MAX_SPECIAL, this.currentSpecial + SPECIAL_RECHARGE_RATE * dt); this.updateSpecialBar();
+                 if (!this.isAI) this.handleInput(); else this.updateAI(dt, platforms);
+
+                const prevY = this.position.y; const prevX = this.position.x;
+                 this.position.x += this.velocity.x * dt * 60; // Use delta time for smoother movement
+
+                // World Bounds
+                 if (this.position.x <= 0) { this.position.x = 0; }
+                 if (this.position.x + this.width >= worldWidth) { this.position.x = worldWidth - this.width;}
+
+                if (!this.specialDash) { // Vertical movement, gravity, and platform collision
+                    this.velocity.y += gravity; this.position.y += this.velocity.y * dt * 60; this.currentPlatform = null;
+
+                     let landed = false;
+                     // Check collision with ALL platforms
+                     for(const platform of platforms){
+                         if ( this.velocity.y >= 0 && // Only check if falling or landed
+                              this.position.x + this.width > platform.position.x && this.position.x < platform.position.x + platform.width && // Horizontal overlap
+                             prevY + this.height <= platform.position.y + 1 && // Was above platform in previous frame (+1 buffer)
+                             this.position.y + this.height >= platform.position.y ) { // Is at or below platform in current frame
+
+                             this.velocity.y = 0; this.position.y = platform.position.y - this.height; this.isGrounded = true; this.currentPlatform = platform; landed = true;
+                              emitParticles(this.position.x + this.width / 2, this.position.y + this.height, 3, '#a1887f', 2.5, 1.2); break;
+                         }
+                     }
+
+                     // Floor Collision if not on a platform
+                     if (!landed && this.position.y + this.height >= floorY) {
+                         if (this.velocity.y > 1) emitParticles(this.position.x + this.width / 2, this.position.y + this.height, 4, '#8d6e63', 3, 1.8);
+                         this.velocity.y = 0; this.position.y = floorY - this.height; this.isGrounded = true; landed = true;
+                     }
+
+                     if (!landed) { this.isGrounded = false; this.currentPlatform = null;}
+
+                 } else { // Special Dash movement overrides vertical physics temporarily
+                    this.position.x += this.velocity.x * dt * 60; // Dash move (already done above, remove duplication later)
+                     // Add boundary checks for dash as well
+                     if (this.position.x <= 0 || this.position.x + this.width >= worldWidth) { this.specialDash = false; this.velocity.x = 0;}
+                 }
+
+                 // Attack box position update (same as before)
+                 let attackBoxOffsetX = this.facingRight ? this.attackBox.offset.x : -(this.attackBox.offset.x + this.attackBox.width - this.width);
+                 this.attackBox.position.x = this.position.x + attackBoxOffsetX; this.attackBox.position.y = this.position.y + this.attackBox.offset.y;
+                 let specialAttackBoxOffsetX = this.facingRight ? this.specialAttackBox.offset.x : -(this.specialAttackBox.offset.x + this.specialAttackBox.width - this.width);
+                 this.specialAttackBox.position.x = this.position.x + specialAttackBoxOffsetX; this.specialAttackBox.position.y = this.position.y + this.specialAttackBox.offset.y;
+
+                 if (this.health <= 0) { this.health = 0; this.velocity.x = 0; this.canAttack = false; this.canUseSpecial = false; }
+            }
+
+            handleInput() { // Similar, just update jump logic slightly
+                 if(this.health <= 0 || this.isPerformingSpecial) { if(!this.isPerformingSpecial) this.velocity.x = 0; return;}
+                 this.velocity.x = 0;
+                 if (keys[this.controls.left] && this.lastkey === this.controls.left) { this.velocity.x = -PLAYER_SPEED; this.facingRight = false; }
+                 else if (keys[this.controls.right] && this.lastkey === this.controls.right) { this.velocity.x = PLAYER_SPEED; this.facingRight = true; }
+                 if (keys[this.controls.jump] && this.isGrounded) { this.velocity.y = JUMP_VELOCITY; this.isGrounded = false; this.currentPlatform = null; emitParticles(this.position.x + this.width / 2, this.position.y + this.height, 4, '#b08d57', 3.5, 1.5); keys[this.controls.jump] = false; }
+                 if (keys[this.controls.attack] && this.canAttack) { this.attack(); keys[this.controls.attack] = false; }
+                 if (keys[this.controls.special] && this.canUseSpecial && this.currentSpecial === MAX_SPECIAL) { this.performSpecial(); keys[this.controls.special] = false; }
+             }
+
+            updateAI(dt, platforms) { // Major AI update needed for platforms
+                 if(this.health <= 0 || !this.playerRef || this.playerRef.health <= 0 || this.isPerformingSpecial) { this.velocity.x = 0; this.aiTarget = null; return; }
+                 this.aiDecisionTimer -= dt * 1000;
+
+                 if (this.aiDecisionTimer <= 0) {
+                     const player = this.playerRef;
+                     const directionX = player.position.x - this.position.x; const distanceX = Math.abs(directionX);
+                     const directionY = player.position.y - this.position.y; const distanceY = Math.abs(directionY);
+                     const randomAction = Math.random();
+
+                     // Determine AI Target (Player or Pickup)
+                      this.aiTarget = player.position; // Default target player
+                      let closestPickup = null;
+                      let distToPickup = Infinity;
+                      if (pickups.some(p=>p.active && p.type==='health')) {
+                          pickups.filter(p=>p.active).forEach(p => {
+                              let d = Math.abs(p.position.x - this.position.x);
+                              if (d < distToPickup && Math.abs(p.position.y - this.position.y) < canvas.height*0.5) { distToPickup = d; closestPickup = p;} // Only consider reachable pickups
+                          });
+                         if (closestPickup && this.health < MAX_HEALTH * 0.6 && distanceX > canvas.width*0.3 && randomAction < AI_PICKUP_CHANCE){
+                             this.aiTarget = closestPickup.position; // Switch target to pickup
+                             this.currentAIAction = 'seek_pickup';
+                         }
+                     }
+                     const targetDirectionX = this.aiTarget.x - this.position.x; const targetDistanceX = Math.abs(targetDirectionX);
+                     const targetIsPlayer = this.aiTarget === player.position;
+
+                    let targetPlatform = targetIsPlayer ? player.currentPlatform : null; // Get player's platform if targeting player
+                    let needsJump = false;
+                    let jumpTargetPlatform = null;
+
+                     // Check if AI needs to jump to reach target (simplified logic)
+                     if ( (targetPlatform && this.currentPlatform !== targetPlatform && this.isGrounded) || // Target on diff platform
+                         (targetIsPlayer && player.position.y < this.position.y - this.height && distanceX < this.width * 3 && this.isGrounded) ) // Target is above and close
+                     {
+                           needsJump = true;
+                           // Find a suitable platform to jump towards (closest or target's)
+                           let bestPlatform = targetPlatform; // Prioritize target's platform
+                            if (!bestPlatform) { // If target isn't on platform, find closest one in general direction
+                               let minDist = Infinity;
+                               platforms.forEach(p => {
+                                    let d = Math.abs((p.position.x + p.width/2) - (this.position.x + this.width/2));
+                                     if (p.position.y < this.position.y && d < minDist && Math.sign(p.position.x - this.position.x) === Math.sign(targetDirectionX)) {
+                                          minDist = d; bestPlatform = p;
+                                      }
+                                });
+                           }
+                           jumpTargetPlatform = bestPlatform;
+                      }
+
+
+                      // Action Decision Tree
+                      if (needsJump && jumpTargetPlatform && randomAction < 0.3) { // Attempt Jump (reduced chance if not essential)
+                         const jumpDir = (jumpTargetPlatform.position.x + jumpTargetPlatform.width / 2) > this.position.x ? 1 : -1;
+                          this.velocity.y = JUMP_VELOCITY; // Full jump power
+                          this.velocity.x = jumpDir * AI_SPEED; this.isGrounded = false; this.currentPlatform = null; this.facingRight = jumpDir > 0;
+                         emitParticles(this.position.x + this.width / 2, this.position.y + this.height, 3, '#b08d57', 3, 1); this.currentAIAction = 'platform_jump';
+                      } else if (targetIsPlayer && this.canUseSpecial && this.currentSpecial === MAX_SPECIAL && distanceX < canvas.width * 0.6 && distanceY < this.height * 1.2 && randomAction < AI_SPECIAL_PROBABILITY) { this.performSpecial(); this.currentAIAction = 'special'; } // Special Attack
+                      else if (targetIsPlayer && distanceX < this.attackRange && distanceY < this.height * 0.8 && this.canAttack && randomAction < AI_ATTACK_PROBABILITY) { this.attack(); this.currentAIAction = 'attack'; } // Attack
+                      else if (targetDistanceX > this.width * (targetIsPlayer ? 1.5 : 0.5) ) { this.velocity.x = targetDirectionX > 0 ? AI_SPEED : -AI_SPEED; this.facingRight = targetDirectionX > 0; this.currentAIAction = 'move_target'; } // Move towards target
+                      else if (targetIsPlayer && distanceX < this.width * 0.8) { this.velocity.x = targetDirectionX > 0 ? -AI_SPEED * 0.7 : AI_SPEED * 0.7; this.facingRight = !(targetDirectionX > 0); this.currentAIAction = 'retreat'; } // Retreat if player & too close
+                      else { this.velocity.x = 0; this.facingRight = targetDirectionX > 0; if(this.isGrounded && targetIsPlayer && randomAction > 0.98) { this.velocity.y = JUMP_VELOCITY*0.6;} else {this.currentAIAction = 'idle';} } // Idle or short hop
+
+                     this.aiDecisionTimer = AI_REACTION_TIME + Math.random() * 100;
+                 }
+            }
+
+
+            attack() { // Slightly faster animation potentially
+                if (!this.canAttack || this.isAttacking || this.isPerformingSpecial) return; this.isAttacking = true; this.canAttack = false; this.velocity.x *= 0.1;
+                clearTimeout(this.attackTimeout); this.attackTimeout = setTimeout(() => { this.isAttacking = false; }, ATTACK_DURATION);
+                const cooldown = this.isAI ? AI_ATTACK_COOLDOWN : ATTACK_COOLDOWN; clearTimeout(this.attackCooldownTimeout); this.attackCooldownTimeout = setTimeout(() => { this.canAttack = true; }, cooldown + Math.random() * 30);
+            }
+             performSpecial() { // Same logic
+                 if(!this.canUseSpecial || this.isPerformingSpecial || this.currentSpecial < MAX_SPECIAL) return; this.isPerformingSpecial = true; this.canUseSpecial = false; this.currentSpecial = 0; this.specialDash = true; this.velocity.y = -2.5; this.velocity.x = this.facingRight ? DASH_SPEED : -DASH_SPEED;
+                 emitParticles(this.position.x + this.width/2, this.position.y + this.height/2, 25, '#87CEFA', 5.5, 6.5, false); clearTimeout(this.specialTimeout); this.specialTimeout = setTimeout(() => { this.isPerformingSpecial = false; this.specialDash = false; this.velocity.x = 0; }, SPECIAL_ATTACK_DURATION); clearTimeout(this.specialCooldownTimeout); this.specialCooldownTimeout = setTimeout(() => { this.canUseSpecial = true; }, SPECIAL_COOLDOWN);
+             }
+            takeHit(damage, isSpecial = false) { // Same logic
+                 if (this.health <= 0) return; this.health -= damage; if (this.health < 0) this.health = 0; this.updateHealthBar();
+                 emitParticles(this.position.x + this.width / 2, this.position.y + this.height / 2, isSpecial ? PARTICLE_COUNT * 2.8 : PARTICLE_COUNT * 1.2, isSpecial ? '#ff473a' : '#ffa500', isSpecial ? 6.5: 4.5, isSpecial ? 7.5: 5.5);
+                 this.lastHitTime = performance.now(); if(!this.isAI){ playerComboCount = 0; showCombo(0); } this.velocity.y = -5.5; // Knockback
+                 if(isSpecial) triggerScreenShake();
+            }
+             updateHealthBar() { (this.isAI ? player2HealthBar : player1HealthBar).style.width = `${Math.max(0, this.health / MAX_HEALTH) * 100}%`; }
+             updateSpecialBar() { (this.isAI ? player2SpecialBar : player1SpecialBar).style.width = `${(this.currentSpecial / MAX_SPECIAL) * 100}%`; }
+             collectPickup(pickup) { if(pickup.type === 'health') { this.health = Math.min(MAX_HEALTH, this.health + HEALTH_PICKUP_AMOUNT); this.updateHealthBar(); emitParticles(this.position.x+this.width/2, this.position.y+this.height/2, 18, '#90ee90', 4.5, 3.5, false); } pickup.active = false; }
+        } // End Sprite Class
+
+        function triggerScreenShake(){ screenShake.duration = SHAKE_DURATION; screenShake.intensity = SHAKE_INTENSITY;}
+        function rectangularCollision({ attacker, target }) { // Same logic
+            let attacking = attacker.isAttacking || (attacker.isPerformingSpecial && !attacker.specialDash); if (!attacking) return false; let box = attacker.isPerformingSpecial ? attacker.specialAttackBox : attacker.attackBox;
+            return ( box.position.x + box.width >= target.position.x && box.position.x <= target.position.x + target.width && box.position.y + box.height >= target.position.y && box.position.y <= target.position.y + target.height ); }
+        function checkSpecialDashCollision({ attacker, target }){ // Same logic
+            if (!attacker.isPerformingSpecial || !attacker.specialDash) return false; return ( attacker.position.x + attacker.width > target.position.x && attacker.position.x < target.position.x + target.width && attacker.position.y + attacker.height > target.position.y && attacker.position.y < target.position.y + target.height ); }
+
+        function updateCamera(dt) { // Same logic
+            const target = (opponent.health > 0) ? (player.position.x + opponent.position.x) / 2 : player.position.x + player.width / 2;
+             camera.targetX = target - canvas.width / 2; camera.targetX = Math.max(0, Math.min(camera.targetX, worldWidth - canvas.width));
+             camera.x += (camera.targetX - camera.x) * 0.1; // Slightly faster follow maybe
+            if (Math.abs(camera.targetX - camera.x) < 0.5) camera.x = camera.targetX;
+        }
+
+        function drawBackground(offsetX){ // Enhanced background
+            ctx.fillStyle = '#6d4c41'; // Base wall
+             ctx.fillRect(0, 0, canvas.width, canvas.height); // Fill screen first
+
+             // Parallax effect for distant wall pattern (slower scroll)
+             const parallaxFactor = 0.5;
+             const parallaxOffsetX = offsetX * parallaxFactor;
+             ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)'; ctx.lineWidth = 1;
+             for (let y = 0; y < floorY + 50; y += 90) { // Draw slightly below floorY for seamless look
+                 for (let x = -(parallaxOffsetX % 140); x < canvas.width + (parallaxOffsetX % 140); x += 140) {
+                     const drawX = x - (parallaxOffsetX > 0 ? parallaxOffsetX % 140 : 0);
+                      // Simple block pattern
+                     ctx.fillStyle = ( (x/140 + y/90) % 2 === 0) ? '#654321' : '#5a3a1f'; // Subtle color variance
+                     ctx.fillRect(drawX , y, 140, 90);
+                     ctx.strokeRect(drawX , y, 140, 90);
+                      // Add window slits or banners occasionally
+                       if( (x/140 * 3 + y/90 * 2) % 7 < 1) {
+                           ctx.fillStyle = '#212121'; ctx.fillRect(drawX + 55, y + 20, 30, 50); // Slit
+                       } else if ( (x/140 * 2 + y/90 * 5) % 11 < 1 ) {
+                            ctx.fillStyle = Math.random() < 0.5 ? '#b71c1c' : '#1a237e'; // Red or Blue Banner
+                           ctx.fillRect(drawX + 60, y + 10, 20, 70); ctx.fillStyle = '#ffd700'; ctx.fillRect(drawX + 65, y+15, 10, 10); // Gold dot
+                        }
+                 }
+             }
+              // Draw floor (fixed position at bottom)
+             ctx.fillStyle = '#a1887f'; ctx.fillRect(0, floorY, canvas.width, canvas.height - floorY);
+             ctx.fillStyle = 'rgba(0,0,0,0.1)'; for(let i = 0; i < canvas.width; i += 55){ ctx.fillRect(i, floorY, 1.5, canvas.height - floorY); }
+             ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,floorY, canvas.width, 5); // Top edge shadow
+         }
+
+         function showCombo(count) { // Same logic
+             if (count < 2) { comboIndicator.classList.remove('show'); return; } comboIndicator.textContent = `Combo ${count} Touches!`; comboIndicator.classList.add('show'); clearTimeout(comboIndicatorTimeout); comboIndicatorTimeout = setTimeout(() => { comboIndicator.classList.remove('show'); }, 900); }
+
+        function resetGame() { // Create multiple platforms, foreground elements
+            particles = []; pickups = []; platforms = []; foregroundElements = [];
+            worldWidth = canvas.width * 2.5;
+
+             // Define platforms [x, y, width, height, style]
+            const platformData = [
+                [worldWidth * 0.25, canvas.height - 180, 280, 20, 0], // Left mid
+                 [worldWidth * 0.75 - 300, canvas.height - 180, 280, 20, 0], // Right mid
+                 [worldWidth * 0.5 - 200, canvas.height - 330, 400, 25, 1], // Center high
+                 [worldWidth * 0.1, canvas.height - 380, 150, 20, 0], // Far Left High
+                 [worldWidth * 0.9 - 150, canvas.height - 380, 150, 20, 0]  // Far Right High
+             ];
+             platformData.forEach(p => platforms.push(new Platform(p[0], p[1], p[2], p[3], p[4])));
+
+             // Define Foreground Elements
+             foregroundElements.push(new ForegroundElement(worldWidth * 0.15, floorY - 250, 40, 250, 'pillar'));
+             foregroundElements.push(new ForegroundElement(worldWidth * 0.85 - 40, floorY - 250, 40, 250, 'pillar'));
+
+
+            player = new Sprite({ position: { x: worldWidth * 0.1 - 30, y: floorY-150 }, velocity: { x: 0, y: 0 }, color: '#78909c', // Slightly different blue-grey
+                                 controls: { left: 'q', right: 'd', jump: 'z', attack: 'f', special: 'e' }, variation: 1 }); player.facingRight = true;
+            opponent = new Sprite({ position: { x: worldWidth * 0.9 - 30, y: floorY-150 }, velocity: { x: 0, y: 0 }, opponentColor: '#a1887f', // Darker brown
+                                 isAI: true, playerRef: player, variation: 2 }); opponent.facingRight = false;
+
+            player.health = MAX_HEALTH; opponent.health = MAX_HEALTH; player.currentSpecial = 0; opponent.currentSpecial = 0; player.currentPlatform = null; opponent.currentPlatform = null;
+             player.updateHealthBar(); opponent.updateHealthBar(); player.updateSpecialBar(); opponent.updateSpecialBar(); playerComboCount = 0; comboIndicator.classList.remove('show');
+
+            camera.x = (player.position.x + opponent.position.x)/2 - canvas.width / 2; camera.x = Math.max(0, Math.min(camera.x, worldWidth - canvas.width)); camera.targetX = camera.x;
+
+            timer = GAME_DURATION; timerElement.textContent = timer; clearTimeout(timerId); clearTimeout(aiActionTimeout); keys = {}; lastPickupSpawnTime = performance.now(); screenShake = { intensity: 0, duration: 0 };
+         }
+
+         function gameLoop(currentTime) {
+             const dt = Math.min(0.033, Math.max(0.001, (currentTime - lastFrameTime) / 1000)); lastFrameTime = currentTime; window.requestAnimationFrame(gameLoop);
+
+             // Update Logic
+              if (gameState === 'PLAYING') {
+                  updateCamera(dt); player.update(dt, platforms); opponent.update(dt, platforms);
+                  particles.forEach((p, index) => { p.update(dt); if(p.life <= 0) particles.splice(index, 1); });
+                  pickups.forEach(p => p.update(dt));
+
+                   // Spawn Pickups logic (slightly adjusted spawn area)
+                   if(currentTime - lastPickupSpawnTime > PICKUP_SPAWN_INTERVAL) { if(pickups.filter(p=>p.active).length < 2) { const spawnX = Math.random() * (worldWidth * 0.9) + worldWidth * 0.05; let spawnY = floorY - 40; let spawnOnPlatform = Math.random() < 0.5 && platforms.length > 0; if(spawnOnPlatform){ let plat = platforms[Math.floor(Math.random()*platforms.length)]; spawnY = plat.position.y - 40;} pickups.push(new Pickup(spawnX, spawnY)); lastPickupSpawnTime = currentTime; } }
+
+                  // Collision Checks
+                  pickups.forEach((pickup, index) => { if (pickup.active && pickup.checkCollision(player)) player.collectPickup(pickup); if (pickup.active && pickup.checkCollision(opponent)) opponent.collectPickup(pickup);});
+                   pickups = pickups.filter(p => p.active);
+
+                   let playerDidHit = false;
+                   if (player.isAttacking && rectangularCollision({ attacker: player, target: opponent })) { const timeSinceLastHit = performance.now() - opponent.lastHitTime; let damage = ATTACK_DAMAGE; if(timeSinceLastHit < ATTACK_COOLDOWN + 150) { playerComboCount++; damage += COMBO_BONUS_DAMAGE * Math.min(playerComboCount, 5); showCombo(playerComboCount); } else { playerComboCount = 1; } opponent.takeHit(damage); player.isAttacking = false; playerDidHit = true; }
+                   if(player.isPerformingSpecial && checkSpecialDashCollision({attacker: player, target: opponent})) { opponent.takeHit(SPECIAL_ATTACK_DAMAGE, true); player.specialDash = false; player.velocity.x *= 0.2; playerDidHit = true; }
+                   if (opponent.isAttacking && rectangularCollision({ attacker: opponent, target: player })) { player.takeHit(ATTACK_DAMAGE); opponent.isAttacking = false; }
+                   if(opponent.isPerformingSpecial && checkSpecialDashCollision({attacker: opponent, target: player})) { player.takeHit(SPECIAL_ATTACK_DAMAGE, true); opponent.specialDash = false; opponent.velocity.x *= 0.2; }
+
+                    if (player.health <= 0 || opponent.health <= 0) determineWinner({ player, opponent, timerId });
+             } else { pickups.forEach(p => p.update(dt)); } // Only update pickups visuals when not playing
+
+             // Drawing Logic
+             ctx.save();
+              if (screenShake.duration > 0) { const shakeX = (Math.random() - 0.5) * 2 * screenShake.intensity; const shakeY = (Math.random() - 0.5) * 2 * screenShake.intensity; ctx.translate(shakeX, shakeY); screenShake.duration -= dt * 1000; if (screenShake.duration <= 0) screenShake.intensity = 0; }
+              const camX = Math.round(camera.x);
+              // Draw Layers: Background -> Platforms -> Pickups -> Characters -> Particles -> Foreground -> UI(implicit)
+              drawBackground(camX);
+              platforms.forEach(p => p.draw(camX));
+              pickups.forEach(p => p.draw(camX));
+              player.drawCharacter(camX); opponent.drawCharacter(camX);
+              particles.forEach(p => p.draw(camX));
+               foregroundElements.forEach(fe => fe.draw(camX)); // Draw foreground last before UI
+             ctx.restore();
+         }
+
+         function determineWinner({ player, opponent, timerId }) { clearTimeout(timerId); clearTimeout(aiActionTimeout); gameState = 'GAME_OVER'; messageCenter.classList.add('show'); screenShake.intensity = 0; if (player.health <= 0 && opponent.health <= 0) { messageCenter.textContent = 'Double K.O.! Entrée'; } else if (opponent.health <= 0) { messageCenter.textContent = 'TRIOMPHE! Entrée'; } else if (player.health <= 0) { messageCenter.textContent = 'ÉCHEC... Entrée'; } else { messageCenter.textContent = player.health > opponent.health ? 'Victoire (Temps)! Entrée' : 'Défaite (Temps)... Entrée'; }}
+        function decreaseTimer() { if (timer > 0 && gameState === 'PLAYING') { timerId = setTimeout(decreaseTimer, 1000); timer--; timerElement.textContent = timer.toString().padStart(2, '0'); } else if (timer <= 0 && gameState === 'PLAYING') { determineWinner({ player, opponent, timerId }); }}
+
+         window.addEventListener('keydown', (event) => { const key = event.key.toLowerCase(); if (gameState === 'PLAYING' && player.health > 0) { if (!player.isAI) { if (key === player.controls.left || key === player.controls.right) { keys[key] = true; player.lastkey = key; } else if (key === player.controls.jump || key === player.controls.attack || key === player.controls.special) { keys[key] = true; }}} else if (gameState === 'MENU' || gameState === 'GAME_OVER') { if (key === 'enter') { resetGame(); gameState = 'PLAYING'; messageCenter.classList.remove('show'); decreaseTimer(); lastFrameTime = performance.now();}} });
+         window.addEventListener('keyup', (event) => { const key = event.key.toLowerCase(); if (!player.isAI && gameState === 'PLAYING') { if(key === player.controls.left || key === player.controls.right || key === player.controls.jump || key === player.controls.attack || key === player.controls.special) { keys[key] = false; if((key === player.controls.left || key === player.controls.right) && !keys[player.controls.left] && !keys[player.controls.right]){ player.lastkey = ''; }} } });
+
+         window.onload = () => { resetGame(); gameState = 'MENU'; messageCenter.textContent = 'Duel Médiéval - Entrée'; messageCenter.classList.add('show'); gameLoop(performance.now()); };
+
+    </script>
 </body>
 </html>
